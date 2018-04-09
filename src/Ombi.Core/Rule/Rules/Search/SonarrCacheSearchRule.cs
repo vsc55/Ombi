@@ -39,6 +39,7 @@ namespace Ombi.Core.Rule.Rules.Search
             _ctx = ctx;
         }
 
+        public int Priority => 100;
         private readonly IOmbiContext _ctx;
 
         public Task<RuleResult> Execute(SearchViewModel obj)

@@ -15,6 +15,7 @@ namespace Ombi.Core.Rule.Rules.Search
         {
             PlexContentRepository = repo;
         }
+        public int Priority => 100;
 
         private IPlexContentRepository PlexContentRepository { get; }
 

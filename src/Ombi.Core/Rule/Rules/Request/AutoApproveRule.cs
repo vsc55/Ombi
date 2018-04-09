@@ -10,6 +10,7 @@ namespace Ombi.Core.Rule.Rules.Request
 {
     public class AutoApproveRule : BaseRequestRule, IRules<BaseRequest>
     {
+        public int Priority => 100;
         public AutoApproveRule(IPrincipal principal)
         {
             User = principal;

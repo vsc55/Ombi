@@ -39,6 +39,7 @@ namespace Ombi.Core.Rule.Rules.Request
 {
     public class RequestLimitRule : BaseRequestRule, IRules<BaseRequest>
     {
+        public int Priority => 100;
         public RequestLimitRule(IRepository<RequestLog> rl, OmbiUserManager um)
         {
             _requestLog = rl;

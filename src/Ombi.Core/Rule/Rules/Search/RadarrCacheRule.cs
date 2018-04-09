@@ -14,6 +14,7 @@ namespace Ombi.Core.Rule.Rules.Search
             _db = db;
         }
 
+        public int Priority => 100;
         private readonly IRepository<RadarrCache> _db;
 
         public Task<RuleResult> Execute(SearchViewModel obj)

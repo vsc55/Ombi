@@ -9,6 +9,7 @@ namespace Ombi.Core.Rule.Rules
 {
     public class CanRequestRule : BaseRequestRule, IRules<BaseRequest>
     {
+        public int Priority => 100;
         public CanRequestRule(IPrincipal principal)
         {
             User = principal;

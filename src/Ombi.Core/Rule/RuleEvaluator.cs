@@ -23,7 +23,7 @@ namespace Ombi.Core.Rule
             var baseRequestType = typeof(BaseSearchRule).FullName;
             var baseSpecificRuleType = typeof(SpecificRule).FullName;
 
-            var ass = typeof(RuleEvaluator).GetTypeInfo().Assembly;
+            var ass = typeof(RuleEvaluator).GetTypeInfo().Assembly; // LOL ass
 
             GetTypes(provider, ass, baseSearchType, RequestRules);
             GetTypes(provider, ass, baseRequestType, SearchRules);
@@ -37,7 +37,7 @@ namespace Ombi.Core.Rule
         public async Task<IEnumerable<RuleResult>> StartRequestRules(BaseRequest obj)
         {
             var results = new List<RuleResult>();
-            foreach (var rule in RequestRules)
+            foreach (var rule in RequestRules.OrderByDescending(x => x.Priority))
             {
                 var result = await rule.Execute(obj);
                 results.Add(result);
@@ -49,7 +49,7 @@ namespace Ombi.Core.Rule
         public async Task<IEnumerable<RuleResult>> StartSearchRules(SearchViewModel obj)
         {
             var results = new List<RuleResult>();
-            foreach (var rule in SearchRules)
+            foreach (var rule in SearchRules.OrderByDescending(x => x.Priority))
             {
                 var result = await rule.Execute(obj);
                 results.Add(result);

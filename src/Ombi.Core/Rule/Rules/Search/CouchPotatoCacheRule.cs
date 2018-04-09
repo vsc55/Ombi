@@ -32,5 +32,7 @@ namespace Ombi.Core.Rule.Rules.Search
             }
             return Success();
         }
+
+        public int Priority => 100;
     }
 }

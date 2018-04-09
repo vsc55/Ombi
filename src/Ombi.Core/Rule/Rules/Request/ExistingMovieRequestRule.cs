@@ -10,6 +10,7 @@ namespace Ombi.Core.Rule.Rules.Request
 {
     public class ExistingMovieRequestRule : BaseRequestRule, IRules<BaseRequest>
     {
+        public int Priority => 100;
         public ExistingMovieRequestRule(IMovieRequestRepository movie)
         {
             Movie = movie;

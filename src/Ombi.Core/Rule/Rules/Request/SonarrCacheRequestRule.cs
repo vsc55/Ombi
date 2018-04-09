@@ -7,6 +7,7 @@ namespace Ombi.Core.Rule.Rules.Request
 {
     public class SonarrCacheRequestRule : BaseRequestRule, IRules<BaseRequest>
     {
+        public int Priority => 100;
         public SonarrCacheRequestRule(IOmbiContext ctx)
         {
             _ctx = ctx;

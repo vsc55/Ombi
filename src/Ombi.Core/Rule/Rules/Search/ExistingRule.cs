@@ -11,6 +11,7 @@ namespace Ombi.Core.Rule.Rules.Search
 {
     public class ExistingRule : BaseSearchRule, IRules<SearchViewModel>
     {
+        public int Priority => 100;
         public ExistingRule(IMovieRequestRepository movie, ITvRequestRepository tv)
         {
             Movie = movie;

@@ -11,6 +11,7 @@ namespace Ombi.Core.Rule.Rules.Search
 {
     public class EmbyAvailabilityRule : BaseSearchRule, IRules<SearchViewModel>
     {
+        public int Priority => 100;
         public EmbyAvailabilityRule(IEmbyContentRepository repo)
         {
             EmbyContentRepository = repo;
