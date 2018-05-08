@@ -65,6 +65,7 @@
     "run-sequence": "^2.2.1",
     "rxjs": "5.5.2",
     "sass-loader": "^6.0.6",
+    "smartbanner.js": "^1.9.1",
     "style-loader": "^0.19.1",
     "to-string-loader": "^1.1.5",
     "ts-node": "^3.3.0",
