@@ -2,20 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Ombi.Store.Context;
 
 namespace Ombi.Store.Migrations
 {
     [DbContext(typeof(OmbiContext))]
-    partial class OmbiContextModelSnapshot : ModelSnapshot
+    [Migration("20190116212601_RequestedByAlias")]
+    partial class RequestedByAlias
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "2.2.1-servicing-10028");
-
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
@@ -648,11 +649,7 @@ namespace Ombi.Store.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<string>("DescriptionPlaceholder");
-
-                    b.Property<string>("SubjectPlaceholder");
-
-                    b.Property<string>("Name");
+                    b.Property<string>("Value");
 
                     b.HasKey("Id");
 

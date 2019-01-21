@@ -50,7 +50,7 @@
                         <div class="tint" style="background-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%,rgba(0,0,0,0.6) 100%);"></div>
                         <div class="col-sm-2 small-padding">
 
-                            <img *ngIf="node.banner" class="img-responsive poster" width="150" [src]="node.banner" alt="poster">
+                            <img *ngIf="node.banner" class="img-responsive poster tv-poster" width="150" [src]="node.banner" alt="poster">
 
                         </div>
                         <div class="col-sm-8 small-padding">
@@ -138,7 +138,7 @@
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
                                     <li *ngFor="let cat of issueCategories">
-                                        <a [routerLink]="" (click)="reportIssue(cat, node)">{{cat.value}}</a>
+                                        <a [routerLink]="" (click)="reportIssue(cat, node)">{{cat.name}}</a>
                                     </li>
                                 </ul>
                             </div>

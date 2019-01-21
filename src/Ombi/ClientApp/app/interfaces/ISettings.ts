@@ -215,7 +215,9 @@ export interface IDogNzbSettings extends ISettings {
 }
 
 export interface IIssueCategory extends ISettings {
-  value: string;
+  name: string;
+  subjectPlaceholder: string;
+  descriptionPlaceholder: string;
 }
 
 export interface ICronTestModel {
