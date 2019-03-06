@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿
+using Dapper.Contrib.Extensions;
 
 namespace Ombi.Store.Entities
 {

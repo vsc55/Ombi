@@ -61,6 +61,7 @@ using Ombi.Schedule.Jobs.SickRage;
 using Ombi.Schedule.Processor;
 using Ombi.Store.Entities;
 using System.IO;
+using Ombi.Store.SQL;
 
 namespace Ombi.DependencyInjection
 {
@@ -151,7 +152,7 @@ namespace Ombi.DependencyInjection
             services.AddScoped<IExternalContext, ExternalContext>(); // https://docs.microsoft.com/en-us/aspnet/core/data/entity-framework-6
             services.AddTransient<ISettingsRepository, SettingsJsonRepository>();
             services.AddTransient<ISettingsResolver, SettingsResolver>();
-            services.AddTransient<IPlexContentRepository, PlexServerContentRepository>(() => new PlexServerContentRepository(externalDb));
+            services.AddTransient<IPlexContentRepository, PlexServerContentRepository>((__) => new PlexServerContentRepository(externalDb, __.GetRequiredService<ISqliteQueryService>()));
             services.AddTransient<IEmbyContentRepository, EmbyContentRepository>();
             services.AddTransient<INotificationTemplatesRepository, NotificationTemplatesRepository>();
             
@@ -164,6 +165,7 @@ namespace Ombi.DependencyInjection
             services.AddTransient(typeof(ISettingsService<>), typeof(SettingsService<>));
             services.AddTransient(typeof(IRepository<>), typeof(Repository<>));
             services.AddTransient(typeof(IExternalRepository<>), typeof(ExternalRepository<>));
+            services.AddTransient<ISqliteQueryService, SqliteQueryService>();
         }
         public static void RegisterServices(this IServiceCollection services)
         {

@@ -31,19 +31,25 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Dapper;
+using Dapper.Contrib.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Ombi.Store.Context;
 using Ombi.Store.Entities;
+using Ombi.Store.SQL;
 
 namespace Ombi.Store.Repository
 {
     public class PlexServerContentRepository : ExternalRepository<PlexServerContent>, IPlexContentRepository
     {
 
-        public PlexServerContentRepository(string db) : base(db)
+        private readonly ISqliteQueryService _queryService;
+
+        public PlexServerContentRepository(string db, ISqliteQueryService q) : base(db)
         {
+            _queryService = q;
         }
-        
+
 
 
         public async Task<bool> ContentExists(string providerId)
@@ -103,15 +109,16 @@ namespace Ombi.Store.Repository
 
         public async Task<PlexServerContent> GetByKey(int key)
         {
-            return await Db.PlexServerContent.Include(x => x.Seasons).FirstOrDefaultAsync(x => x.Key == key);
+            var query = _queryService.GetQuery("Ombi.Store.Sql.Plex.GetPlexServerContentIncludeSeasons.sql");
+            return await CustomAsync(async (con) =>
+            {
+                con.Open();
+                return await con.QueryFirstOrDefaultAsync<PlexServerContent>(query, new { key });
+            });
         }
 
-        public IEnumerable<PlexServerContent> GetWhereContentByCustom(Expression<Func<PlexServerContent, bool>> predicate)
-        {
-            return Db.PlexServerContent.Where(predicate);
-        }
 
-        public async Task<PlexServerContent> GetFirstContentByCustom(Expression<Func<PlexServerContent, bool>>  predicate)
+        public async Task<PlexServerContent> GetFirstContentByCustom(Expression<Func<PlexServerContent, bool>> predicate)
         {
             return await Db.PlexServerContent
                 .Include(x => x.Seasons)
@@ -121,56 +128,99 @@ namespace Ombi.Store.Repository
 
         public async Task Update(PlexServerContent existingContent)
         {
-            Db.PlexServerContent.Update(existingContent);
-            await Db.SaveChangesAsync();
-        }
-        public void UpdateWithoutSave(PlexServerContent existingContent)
-        {
-            Db.PlexServerContent.Update(existingContent);
-        }
-
-        public async Task UpdateRange(IEnumerable<PlexServerContent> existingContent)
-        {
-            Db.PlexServerContent.UpdateRange(existingContent);
-            await Db.SaveChangesAsync();
+            using (var con = Connection)
+            {
+                con.Open();
+                await con.UpdateAsync(existingContent);
+            }
         }
 
-        public IQueryable<PlexEpisode> GetAllEpisodes()
+        public async Task<IEnumerable<PlexEpisode>> GetAllEpisodes()
         {
-            return Db.PlexEpisode.Include(x => x.Series).AsQueryable();
+            var query = _queryService.GetQuery("Ombi.Store.Sql.Plex.GetAllPlexEpisodesIncludingSeries.sql");
+            using (var con = Connection)
+            {
+
+                con.Open();
+                return await con.QueryAsync<PlexEpisode>(query);
+            }
         }
 
-        public void DeleteWithoutSave(PlexServerContent content)
-        {
-            Db.PlexServerContent.Remove(content);
-        }
-
-        public void DeleteWithoutSave(PlexEpisode content)
-        {
-            Db.PlexEpisode.Remove(content);
-        }
 
         public async Task<PlexEpisode> Add(PlexEpisode content)
         {
-            await Db.PlexEpisode.AddAsync(content);
-            await Db.SaveChangesAsync();
-            return content;
+            using (var c = Connection)
+            {
+                c.Open();
+                var id = await c.InsertAsync(content);
+
+                content.Id = id;
+                return content;
+            }
         }
 
         public async Task DeleteEpisode(PlexEpisode content)
         {
-            Db.PlexEpisode.Remove(content);
-            await Db.SaveChangesAsync();
+            using (var c = Connection)
+            {
+                c.Open();
+                await c.DeleteAsync(content);
+            }
         }
 
         public async Task<PlexEpisode> GetEpisodeByKey(int key)
         {
-            return await Db.PlexEpisode.FirstOrDefaultAsync(x => x.Key == key);
+            using (var c = Connection)
+            {
+                c.Open();
+                return await c.GetAsync<PlexEpisode>(key);
+            }
         }
-        public async Task AddRange(IEnumerable<PlexEpisode> content)
+        public void AddRange(IEnumerable<PlexEpisode> content)
         {
-            Db.PlexEpisode.AddRange(content);
-            await Db.SaveChangesAsync();
+            var enumerable = content as PlexEpisode[] ?? content.ToArray();
+            if (!enumerable.Any())
+            {
+                return;
+            }
+
+            using (var db = Connection)
+            {
+                db.Open();
+                using (var tran = db.BeginTransaction())
+                {
+                    var result = enumerable.Sum(e => db.Insert(e));
+                    if (result != 0)
+                    {
+                        tran.Commit();
+                        return; ;
+                    }
+                    tran.Rollback();
+                    return;
+                }
+            }
+        }
+
+        void IPlexContentRepository.UpdateRange(IEnumerable<PlexServerContent> existingContent)
+        {
+            base.UpdateRange<PlexServerContent>(existingContent);
+        }
+
+        async IQueryable<PlexServerContent> IExternalRepository<PlexServerContent>.GetAll()
+        {
+            return await base.GetAll();
+        }
+
+        public Task AddRange(IEnumerable<PlexServerContent> content, bool save = true)
+        {
+            base.AddRange<PlexServerContent>(content);
+            return Task.CompletedTask;
+        }
+
+        Task IExternalRepository<PlexServerContent>.DeleteRange(IEnumerable<PlexServerContent> req)
+        {
+            base.DeleteRange<PlexServerContent>(req);
+            return Task.CompletedTask;
         }
     }
 }

@@ -13,16 +13,12 @@ namespace Ombi.Store.Repository
         Task<PlexServerContent> Get(string providerId);
         Task<PlexServerContent> GetByKey(int key);
         Task Update(PlexServerContent existingContent);
-        IQueryable<PlexEpisode> GetAllEpisodes();
+        Task<IEnumerable<PlexEpisode>> GetAllEpisodes();
         Task<PlexEpisode> Add(PlexEpisode content);
         Task<PlexEpisode> GetEpisodeByKey(int key);
-        Task AddRange(IEnumerable<PlexEpisode> content);
-        IEnumerable<PlexServerContent> GetWhereContentByCustom(Expression<Func<PlexServerContent, bool>> predicate);
+        void AddRange(IEnumerable<PlexEpisode> content);
         Task<PlexServerContent> GetFirstContentByCustom(Expression<Func<PlexServerContent, bool>> predicate);
         Task DeleteEpisode(PlexEpisode content);
-        void DeleteWithoutSave(PlexServerContent content);
-        void DeleteWithoutSave(PlexEpisode content);
-        Task UpdateRange(IEnumerable<PlexServerContent> existingContent);
-        void UpdateWithoutSave(PlexServerContent existingContent);
+        void UpdateRange(IEnumerable<PlexServerContent> existingContent);
     }
 }

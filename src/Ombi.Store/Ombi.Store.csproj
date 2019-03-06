@@ -10,6 +10,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="SQL\Plex\GetAllPlexEpisodesIncludingSeries.sql" />
+    <None Remove="SQL\Plex\GetPlexServerContentIncludeSeasons.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SQL\Plex\GetAllPlexEpisodesIncludingSeries.sql" />
+    <EmbeddedResource Include="SQL\Plex\GetPlexServerContentIncludeSeasons.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Dapper" Version="1.60.1" />
     <PackageReference Include="Dapper.Contrib" Version="1.60.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="2.2.0" />

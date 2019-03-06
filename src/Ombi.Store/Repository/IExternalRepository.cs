@@ -13,16 +13,11 @@ namespace Ombi.Store.Repository
     {
         Task<T> Find(object key);
         IQueryable<T> GetAll();
-        Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
         Task AddRange(IEnumerable<T> content, bool save = true);
         Task<T> Add(T content);
         Task DeleteRange(IEnumerable<T> req);
         Task Delete(T request);
         Task<int> SaveChangesAsync();
-
-        IIncludableQueryable<TEntity, TProperty> Include<TEntity, TProperty>(
-            IQueryable<TEntity> source, Expression<Func<TEntity, TProperty>> navigationPropertyPath)
-            where TEntity : class;
 
         Task ExecuteSql(string sql);
         DbSet<T> _db { get; }

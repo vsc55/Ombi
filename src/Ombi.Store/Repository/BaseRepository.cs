@@ -25,7 +25,7 @@ namespace Ombi.Store.Repository
           "The database is corrupt, this could be due to the application exiting unexpectedly. See here to fix it: http://www.dosomethinghere.com/2013/02/20/fixing-the-sqlite-error-the-database-disk-image-is-malformed/";
 
         private readonly string _connectionString;
-        private IDbConnection Connection => GetConnection();
+        protected IDbConnection Connection => GetConnection();
 
         public DbSet<T> _db => throw new NotImplementedException();
 
@@ -71,9 +71,14 @@ namespace Ombi.Store.Repository
                 return await c.GetAllAsync<T>();
             }
         }
-        
+
 
         public bool AddRange(IEnumerable<T> content)
+        {
+            return AddRange<T>(content);
+        }
+
+        public bool AddRange<T>(IEnumerable<T> content) where T : Entity
         {
             // If we have nothing to update, then it didn't fail...
             var enumerable = content as T[] ?? content.ToArray();
@@ -89,6 +94,36 @@ namespace Ombi.Store.Repository
                 {
                     var result = enumerable.Sum(e => db.Insert(e));
                     if (result != 0)
+                    {
+                        tran.Commit();
+                        return true;
+                    }
+                    tran.Rollback();
+                    return false;
+                }
+            }
+        }
+
+        public bool UpdateRange(IEnumerable<T> content)
+        {
+            return UpdateRange<T>(content);
+        }
+        public bool UpdateRange<T>(IEnumerable<T> content) where T : Entity
+        {
+            // If we have nothing to update, then it didn't fail...
+            var enumerable = content as T[] ?? content.ToArray();
+            if (!enumerable.Any())
+            {
+                return true;
+            }
+
+            using (var db = Connection)
+            {
+                db.Open();
+                using (var tran = db.BeginTransaction())
+                {
+                    var result = enumerable.All(e => db.Update(e));
+                    if (result)
                     {
                         tran.Commit();
                         return true;
@@ -121,6 +156,11 @@ namespace Ombi.Store.Repository
         }
 
         public void DeleteRange(IEnumerable<T> content)
+        {
+            DeleteRange<T>(content);
+        }
+
+        protected void DeleteRange<T>(IEnumerable<T> content) where T : Entity
         {
             // If we have nothing to update, then it didn't fail...
             var enumerable = content as T[] ?? content.ToArray();
@@ -184,5 +224,6 @@ namespace Ombi.Store.Repository
             var connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
             return Connection;
         }
+
     }
 }
