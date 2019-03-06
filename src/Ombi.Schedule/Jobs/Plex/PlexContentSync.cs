@@ -156,7 +156,7 @@ namespace Ombi.Schedule.Jobs.Plex
             // Let's now process this.
             var contentToAdd = new HashSet<PlexServerContent>();
 
-            var allEps = Repo.GetAllEpisodes();
+            var allEps = await Repo.GetAllEpisodes();
 
             foreach (var content in allContent)
             {
@@ -403,19 +403,18 @@ namespace Ombi.Schedule.Jobs.Plex
                     // This means the rating key has changed somehow.
                     // Should probably delete this and get the new one
                     var oldKey = existingContent.Key;
-                    Repo.DeleteWithoutSave(existingContent);
+                    await Repo.Delete(existingContent);
 
                     // Because we have changed the rating key, we need to change all children too
-                    var episodeToChange = Repo.GetAllEpisodes().Where(x => x.GrandparentKey == oldKey);
+                    var episodeToChange = (await Repo.GetAllEpisodes()).Where(x => x.GrandparentKey == oldKey);
                     if (episodeToChange.Any())
                     {
                         foreach (var e in episodeToChange)
                         {
-                            Repo.DeleteWithoutSave(e);
+                            await Repo.DeleteEpisode(e);
                         }
                     }
-
-                    await Repo.SaveChangesAsync();
+                    
                     existingContent = null;
                 }
             }
@@ -508,8 +507,8 @@ namespace Ombi.Schedule.Jobs.Plex
                     var existingMovieDbId = false;
                     var existingTvDbId = false;
                     if (item.ImdbId.HasValue())
-                    {
-                        existingImdb = await Repo.GetAll().AnyAsync(x =>
+                    
+                        existingImdb = (await Repo.GetAll()).Any(x =>
                             x.ImdbId == item.ImdbId && x.Type == PlexMediaTypeEntity.Show);
                     }
 

@@ -118,12 +118,16 @@ namespace Ombi.Store.Repository
         }
 
 
-        public async Task<PlexServerContent> GetFirstContentByCustom(Expression<Func<PlexServerContent, bool>> predicate)
+        public async Task<PlexServerContent> GetFirstContentByCustom(Func<PlexServerContent, bool> predicate)
         {
-            return await Db.PlexServerContent
-                .Include(x => x.Seasons)
-                .Include(x => x.Episodes)
-                .FirstOrDefaultAsync(predicate);
+            var query = _queryService.GetQuery("Ombi.Store.Sql.Plex.GetPlexServerContentIncludeEverything.sql");
+            using (var con = Connection)
+            {
+                con.Open();
+                var result = await con.QueryAsync<PlexServerContent>(query);
+
+                return result.FirstOrDefault(predicate);
+            }
         }
 
         public async Task Update(PlexServerContent existingContent)
@@ -206,7 +210,7 @@ namespace Ombi.Store.Repository
             base.UpdateRange<PlexServerContent>(existingContent);
         }
 
-        async IQueryable<PlexServerContent> IExternalRepository<PlexServerContent>.GetAll()
+        async async Task<IEnumerable<PlexServerContent>> IExternalRepository<PlexServerContent>.GetAll()
         {
             return await base.GetAll();
         }
