@@ -1,95 +1,160 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Nito.AsyncEx;
 using Ombi.Store.Context;
+using Dapper;
 using Ombi.Store.Entities;
+using Dapper.Contrib.Extensions;
 
 namespace Ombi.Store.Repository
 {
-    public class BaseRepository<T, U> : IRepository<T> where T : Entity where U : IDbContext
+    public class BaseRepository<T> : IRepository<T> where T : Entity
     {
-        public BaseRepository(U ctx)
+        public BaseRepository(string connectionString)
         {
-            _ctx = ctx;
-            _db = _ctx.Set<T>();
+            _connectionString = connectionString;
         }
-        public DbSet<T> _db { get; }
-        private readonly U _ctx;
+        private const string CorruptMessage =
+          "The database is corrupt, this could be due to the application exiting unexpectedly. See here to fix it: http://www.dosomethinghere.com/2013/02/20/fixing-the-sqlite-error-the-database-disk-image-is-malformed/";
+
+        private readonly string _connectionString;
+        private IDbConnection Connection => GetConnection();
+
+        public DbSet<T> _db => throw new NotImplementedException();
+
         private readonly AsyncLock _mutex = new AsyncLock();
 
         public async Task<T> Find(object key)
         {
-            return await _db.FindAsync(key);
-        }
-
-        public IQueryable<T> GetAll()
-        {
-            return _db.AsQueryable();
-        }
-
-        public async Task<T> FirstOrDefaultAsync(Expression<Func<T,bool>> predicate)
-        {
-            return await _db.FirstOrDefaultAsync(predicate);
-        }
-
-        public async Task AddRange(IEnumerable<T> content, bool save = true)
-        {
-            _db.AddRange(content);
-            if (save)
+            using (var c = Connection)
             {
-                await InternalSaveChanges();
+                c.Open();
+                return await c.GetAsync<T>(key);
+            }
+        }
+        public async Task<IEnumerable<T>> CustomAsync(Func<IDbConnection, Task<IEnumerable<T>>> func)
+        {
+            using (var cnn = Connection)
+            {
+                return await func(cnn);
+            }
+        }
+        public async Task<T> CustomAsync(Func<IDbConnection, Task<T>> func)
+        {
+            using (var cnn = Connection)
+            {
+                return await func(cnn);
+            }
+        }
+
+        public async Task<bool> AnyAsync(Func<IDbConnection, Task<bool>> func)
+        {
+            using (var cnn = Connection)
+            {
+                return await func(cnn);
+            }
+        }
+
+
+        public async Task<IEnumerable<T>> GetAll()
+        {
+            using (var c = Connection)
+            {
+                c.Open();
+                return await c.GetAllAsync<T>();
+            }
+        }
+        
+
+        public bool AddRange(IEnumerable<T> content)
+        {
+            // If we have nothing to update, then it didn't fail...
+            var enumerable = content as T[] ?? content.ToArray();
+            if (!enumerable.Any())
+            {
+                return true;
+            }
+
+            using (var db = Connection)
+            {
+                db.Open();
+                using (var tran = db.BeginTransaction())
+                {
+                    var result = enumerable.Sum(e => db.Insert(e));
+                    if (result != 0)
+                    {
+                        tran.Commit();
+                        return true;
+                    }
+                    tran.Rollback();
+                    return false;
+                }
             }
         }
 
         public async Task<T> Add(T content)
         {
-            await _db.AddAsync(content);
-            await InternalSaveChanges();
-            return content;
+            using (var c = Connection)
+            {
+                c.Open();
+                var id = await c.InsertAsync(content);
+
+                content.Id = id;
+                return content;
+            }
         }
 
         public async Task Delete(T request)
         {
-            _db.Remove(request);
-            await InternalSaveChanges();
+            using(var c = Connection)
+            {
+                c.Open();
+                await c.DeleteAsync(request);
+            }
         }
 
-        public async Task DeleteRange(IEnumerable<T> req)
+        public void DeleteRange(IEnumerable<T> content)
         {
-            _db.RemoveRange(req);
-            await InternalSaveChanges();
-        }
+            // If we have nothing to update, then it didn't fail...
+            var enumerable = content as T[] ?? content.ToArray();
+            if (!enumerable.Any())
+            {
+                return;
+            }
 
-        public async Task<int> SaveChangesAsync()
-        {
-            return await InternalSaveChanges();
-        }
-
-        public IIncludableQueryable<TEntity, TProperty> Include<TEntity, TProperty>(
-            IQueryable<TEntity> source, Expression<Func<TEntity, TProperty>> navigationPropertyPath)
-            where TEntity : class
-        {
-            return source.Include(navigationPropertyPath);
+            using (var db = Connection)
+            {
+                db.Open();
+                using (var tran = db.BeginTransaction())
+                {
+                    var result = enumerable.All(e => db.Delete(e));
+                    if (result)
+                    {
+                        tran.Commit();
+                    }
+                    else
+                    {
+                        tran.Rollback();
+                    }
+                }
+            }
         }
 
         public async Task ExecuteSql(string sql)
         {
-            await _ctx.Database.ExecuteSqlCommandAsync(sql);
-        }
-
-        private async Task<int> InternalSaveChanges()
-        {
-            using (await _mutex.LockAsync())
+            using(var c = Connection)
             {
-                return await _ctx.SaveChangesAsync();
+                c.Open();
+                await c.QueryAsync(sql);
             }
         }
-        
 
         private bool _disposed;
         // Protected implementation of Dispose pattern.
@@ -100,9 +165,9 @@ namespace Ombi.Store.Repository
 
             if (disposing)
             {
-                _ctx?.Dispose();
+                Connection?.Dispose();
             }
-            
+
             _disposed = true;
         }
 
@@ -110,6 +175,14 @@ namespace Ombi.Store.Repository
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        private IDbConnection GetConnection()
+        {
+            var connectionStringBuilder = new SqliteConnectionStringBuilder();
+            connectionStringBuilder.DataSource = _connectionString;
+            var connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+            return Connection;
         }
     }
 }

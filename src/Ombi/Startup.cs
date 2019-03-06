@@ -89,16 +89,17 @@ namespace Ombi
                 expression.AddCollectionMappers();
             });
 
-            services.RegisterApplicationDependencies(); // Ioc and EF
-            services.AddSwagger();
-            services.AddAppSettingsValues(Configuration);
-
             var i = StoragePathSingleton.Instance;
             if (string.IsNullOrEmpty(i.StoragePath))
             {
                 i.StoragePath = string.Empty;
             }
             var sqliteStorage = $"Data Source={Path.Combine(i.StoragePath, "Schedules.db")};";
+
+
+            services.RegisterApplicationDependencies(); // Ioc and EF
+            services.AddSwagger();
+            services.AddAppSettingsValues(Configuration);
 
             services.AddHangfire(x =>
             {

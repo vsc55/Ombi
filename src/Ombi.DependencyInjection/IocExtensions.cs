@@ -60,6 +60,7 @@ using Ombi.Schedule.Jobs.Plex.Interfaces;
 using Ombi.Schedule.Jobs.SickRage;
 using Ombi.Schedule.Processor;
 using Ombi.Store.Entities;
+using System.IO;
 
 namespace Ombi.DependencyInjection
 {
@@ -131,7 +132,16 @@ namespace Ombi.DependencyInjection
             services.AddTransient<ILidarrApi, LidarrApi>();
         }
 
-        public static void RegisterStore(this IServiceCollection services) { 
+        public static void RegisterStore(this IServiceCollection services) {
+            var i = StoragePathSingleton.Instance;
+            if (string.IsNullOrEmpty(i.StoragePath))
+            {
+                i.StoragePath = string.Empty;
+            }
+            var ombiDb = $"Data Source={Path.Combine(i.StoragePath, "Ombi.db")}";
+            var settingsDb = $"Data Source={Path.Combine(i.StoragePath, "OmbiSettings.db")}";
+            var externalDb = $"Data Source={Path.Combine(i.StoragePath, "OmbiExternal.db")}";
+
             services.AddEntityFrameworkSqlite().AddDbContext<OmbiContext>();
             services.AddEntityFrameworkSqlite().AddDbContext<SettingsContext>();
             services.AddEntityFrameworkSqlite().AddDbContext<ExternalContext>();
@@ -141,7 +151,7 @@ namespace Ombi.DependencyInjection
             services.AddScoped<IExternalContext, ExternalContext>(); // https://docs.microsoft.com/en-us/aspnet/core/data/entity-framework-6
             services.AddTransient<ISettingsRepository, SettingsJsonRepository>();
             services.AddTransient<ISettingsResolver, SettingsResolver>();
-            services.AddTransient<IPlexContentRepository, PlexServerContentRepository>();
+            services.AddTransient<IPlexContentRepository, PlexServerContentRepository>(() => new PlexServerContentRepository(externalDb));
             services.AddTransient<IEmbyContentRepository, EmbyContentRepository>();
             services.AddTransient<INotificationTemplatesRepository, NotificationTemplatesRepository>();
             

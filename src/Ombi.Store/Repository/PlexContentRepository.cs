@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Ombi.Store.Context;
 using Ombi.Store.Entities;
@@ -39,23 +40,36 @@ namespace Ombi.Store.Repository
     public class PlexServerContentRepository : ExternalRepository<PlexServerContent>, IPlexContentRepository
     {
 
-        public PlexServerContentRepository(IExternalContext db) : base(db)
+        public PlexServerContentRepository(string db) : base(db)
         {
-            Db = db;
         }
-
-        private IExternalContext Db { get; }
+        
 
 
         public async Task<bool> ContentExists(string providerId)
         {
-            var any = await Db.PlexServerContent.AnyAsync(x => x.ImdbId == providerId);
+            var any = await AnyAsync(async (con) =>
+            {
+                con.Open();
+                var result = await con.QueryFirstOrDefaultAsync<PlexServerContent>("select * from PlexServerContent where ImdbId = @providerId", new { providerId });
+                return result != null;
+            });
             if (!any)
             {
-                any = await Db.PlexServerContent.AnyAsync(x => x.TheMovieDbId == providerId);
+                any = await AnyAsync(async (con) =>
+                {
+                    con.Open();
+                    var result = await con.QueryFirstOrDefaultAsync<PlexServerContent>("select * from PlexServerContent where TheMovieDbId = @providerId", new { providerId });
+                    return result != null;
+                });
                 if (!any)
                 {
-                    any = await Db.PlexServerContent.AnyAsync(x => x.TvDbId == providerId);
+                    any = await AnyAsync(async (con) =>
+                    {
+                        con.Open();
+                        var result = await con.QueryFirstOrDefaultAsync<PlexServerContent>("select * from PlexServerContent where TvDbId = @providerId", new { providerId });
+                        return result != null;
+                    });
                 }
             }
             return any;
@@ -63,13 +77,25 @@ namespace Ombi.Store.Repository
 
         public async Task<PlexServerContent> Get(string providerId)
         {
-            var item = await Db.PlexServerContent.FirstOrDefaultAsync(x => x.ImdbId == providerId);
+            var item = await CustomAsync(async (con) =>
+            {
+                con.Open();
+                return await con.QueryFirstOrDefaultAsync<PlexServerContent>("Select * from PlexServerContent where ImdbId = @providerId", new { providerId });
+            });
             if (item == null)
             {
-                item = await Db.PlexServerContent.FirstOrDefaultAsync(x => x.TheMovieDbId == providerId);
+                item = item = await CustomAsync(async (con) =>
+                {
+                    con.Open();
+                    return await con.QueryFirstOrDefaultAsync<PlexServerContent>("Select * from PlexServerContent where TheMovieDbId = @providerId", new { providerId });
+                });
                 if (item == null)
                 {
-                    item = await Db.PlexServerContent.FirstOrDefaultAsync(x => x.TvDbId == providerId);
+                    item = await CustomAsync(async (con) =>
+                    {
+                        con.Open();
+                        return await con.QueryFirstOrDefaultAsync<PlexServerContent>("Select * from PlexServerContent where TvDbId = @providerId", new { providerId });
+                    });
                 }
             }
             return item;
