@@ -776,8 +776,9 @@ namespace Ombi.Controllers
 
             var emailSettings = await EmailSettings.GetSettingsAsync();
 
-            customizationSettings.AddToUrl("/token?token=");
-            var url = customizationSettings.ApplicationUrl;
+            var url = (string.IsNullOrEmpty(customizationSettings.ApplicationUrl)
+                ? $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}"
+                : customizationSettings.ApplicationUrl);
 
             if (user.UserType == UserType.PlexUser)
             {
@@ -806,6 +807,12 @@ namespace Ombi.Controllers
                 // We have the user
                 var token = await UserManager.GeneratePasswordResetTokenAsync(user);
                 var encodedToken = WebUtility.UrlEncode(token);
+                url = url.Replace("/token?token=", "");
+                if (url.EndsWith("/"))
+                {
+                    url.Remove(url.Length - 1);
+                }
+                url = url + "/token?token=";
 
                 await EmailProvider.SendAdHoc(new NotificationMessage
                 {
