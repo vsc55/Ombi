@@ -28,11 +28,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ombi.Api.CouchPotato;
 using Ombi.Core.Settings;
 using Ombi.Helpers;
+using Ombi.Hubs;
 using Ombi.Settings.Settings.Models.External;
 using Ombi.Store.Context;
 using Ombi.Store.Entities;
@@ -43,12 +45,13 @@ namespace Ombi.Schedule.Jobs.Couchpotato
     public class CouchPotatoSync : ICouchPotatoSync
     {
         public CouchPotatoSync(ISettingsService<CouchPotatoSettings> cpSettings,
-            ICouchPotatoApi api, ILogger<CouchPotatoSync> log, ExternalContext ctx)
+            ICouchPotatoApi api, ILogger<CouchPotatoSync> log, ExternalContext ctx, IHubContext<NotificationHub> hub)
         {
             _settings = cpSettings;
             _api = api;
             _log = log;
             _ctx = ctx;
+            _notification = hub;
             _settings.ClearCache();
         }
 
@@ -56,6 +59,7 @@ namespace Ombi.Schedule.Jobs.Couchpotato
         private readonly ICouchPotatoApi _api;
         private readonly ILogger<CouchPotatoSync> _log;
         private readonly ExternalContext _ctx;
+        private readonly IHubContext<NotificationHub> _notification;
 
         public async Task Execute(IJobExecutionContext job)
         {
@@ -65,18 +69,24 @@ namespace Ombi.Schedule.Jobs.Couchpotato
                 return;
             }
 
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Couch Potato Sync Started");
             try
             {
                 _log.LogInformation(LoggingEvents.CouchPotatoCacher, "Getting all active movies from CP");
                 var movies = await _api.GetMovies(settings.FullUri, settings.ApiKey, new[] {"active"});
                 if (movies != null)
                 {
-                    // Let's remove the old cached data
-                    using (var tran = await _ctx.Database.BeginTransactionAsync())
+                    var strat = _ctx.Database.CreateExecutionStrategy();
+                    await strat.ExecuteAsync(async () =>
                     {
-                        await _ctx.Database.ExecuteSqlCommandAsync("DELETE FROM CouchPotatoCache");
-                        tran.Commit();
-                    }
+                        // Let's remove the old cached data
+                        using (var tran = await _ctx.Database.BeginTransactionAsync())
+                        {
+                            await _ctx.Database.ExecuteSqlRawAsync("DELETE FROM CouchPotatoCache");
+                            tran.Commit();
+                        }
+                    });
 
                     // Save
                     var movieIds = new List<CouchPotatoCache>();
@@ -96,18 +106,26 @@ namespace Ombi.Schedule.Jobs.Couchpotato
                             _log.LogError("TMDBId is not > 0 for movie {0}", m.title);
                         }
                     }
-
-                    using (var tran = await _ctx.Database.BeginTransactionAsync())
+                    strat = _ctx.Database.CreateExecutionStrategy();
+                    await strat.ExecuteAsync(async () =>
                     {
-                        await _ctx.CouchPotatoCache.AddRangeAsync(movieIds);
+                        using (var tran = await _ctx.Database.BeginTransactionAsync())
+                        {
+                            await _ctx.CouchPotatoCache.AddRangeAsync(movieIds);
 
-                        await _ctx.SaveChangesAsync();
-                        tran.Commit();
-                    }
+                            await _ctx.SaveChangesAsync();
+                            tran.Commit();
+                        }
+                    });
+
+                    await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                        .SendAsync(NotificationHub.NotificationEvent, "Couch Potato Sync Finished");
                 }
             }
             catch (Exception e)
             {
+                await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                    .SendAsync(NotificationHub.NotificationEvent, "Couch Potato Sync Failed");
                 _log.LogError(LoggingEvents.CouchPotatoCacher, e, "error when trying to get movies from CP");
                 throw;
             }
@@ -121,7 +139,7 @@ namespace Ombi.Schedule.Jobs.Couchpotato
 
             if (disposing)
             {
-                _settings?.Dispose();
+                //_settings?.Dispose();
                 _ctx?.Dispose();
             }
             _disposed = true;

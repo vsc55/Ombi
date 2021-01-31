@@ -16,6 +16,7 @@ namespace Ombi.Store.Repository.Requests
         public int ChildRequestId { get; set; }
         [ForeignKey(nameof(ChildRequestId))]
         public ChildRequests ChildRequest { get; set; }
+        [NotMapped] public bool SeasonAvailable { get; set; }
     }
 
     public class EpisodeRequests : Entity
@@ -33,5 +34,29 @@ namespace Ombi.Store.Repository.Requests
         public SeasonRequests Season { get; set; }
 
         [NotMapped] public string AirDateDisplay => AirDate == DateTime.MinValue ? "Unknown" : AirDate.ToString(CultureInfo.InvariantCulture);
+
+        [NotMapped]
+        public string RequestStatus
+        {
+            get
+            {
+                if (Available)
+                {
+                    return "Common.Available";
+                }
+
+                if (Approved & !Available)
+                {
+                    return "Common.ProcessingRequest";
+                }
+
+                if (!Approved && !Available && Requested)
+                {
+                    return "Common.PendingApproval";
+                }
+
+                return string.Empty;
+            }
+        }
     }
 }

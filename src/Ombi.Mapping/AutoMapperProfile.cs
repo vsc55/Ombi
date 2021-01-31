@@ -5,6 +5,7 @@ using System.Reflection;
 using AutoMapper;
 using AutoMapper.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Ombi.Mapping.Profiles;
 
 namespace Ombi.Mapping
 {
@@ -12,18 +13,17 @@ namespace Ombi.Mapping
     {
         public static IServiceCollection AddOmbiMappingProfile(this IServiceCollection services)
         {
-            System.Reflection.Assembly ass = typeof(AutoMapperProfile).GetTypeInfo().Assembly;
-            var assemblies = new List<Type>();
-            foreach (System.Reflection.TypeInfo ti in ass.DefinedTypes)
+            var profiles = new List<Profile>
             {
-                if (ti.ImplementedInterfaces.Contains(typeof(IProfileConfiguration)))
-                {
-                    assemblies.Add(ti.AsType());
-                }
-            }
+                new MovieProfile(),
+                new OmbiProfile(),
+                new SettingsProfile(),
+                new TvProfile(),
+                new TvProfileV2()
+            };
             var config = new AutoMapper.MapperConfiguration(cfg =>
             {
-                cfg.AddProfiles(assemblies);
+                cfg.AddProfiles(profiles);
             });
 
             var mapper = config.CreateMapper();

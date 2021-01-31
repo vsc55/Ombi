@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ombi.Core;
 using Ombi.Helpers;
+using Ombi.Hubs;
 using Ombi.Notifications.Models;
 using Ombi.Schedule.Jobs.Plex.Models;
 using Ombi.Store.Entities;
@@ -19,13 +21,14 @@ namespace Ombi.Schedule.Jobs.Plex
     public class PlexAvailabilityChecker : IPlexAvailabilityChecker
     {
         public PlexAvailabilityChecker(IPlexContentRepository repo, ITvRequestRepository tvRequest, IMovieRequestRepository movies,
-            INotificationHelper notification,  ILogger<PlexAvailabilityChecker> log)
+            INotificationHelper notification, ILogger<PlexAvailabilityChecker> log, IHubContext<NotificationHub> hub)
         {
             _tvRepo = tvRequest;
             _repo = repo;
             _movieRepo = movies;
             _notificationService = notification;
             _log = log;
+            _notification = hub;
         }
 
         private readonly ITvRequestRepository _tvRepo;
@@ -33,29 +36,39 @@ namespace Ombi.Schedule.Jobs.Plex
         private readonly IPlexContentRepository _repo;
         private readonly INotificationHelper _notificationService;
         private readonly ILogger _log;
+        private readonly IHubContext<NotificationHub> _notification;
 
         public async Task Execute(IJobExecutionContext job)
         {
             try
             {
+
+                await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                    .SendAsync(NotificationHub.NotificationEvent, "Plex Availability Check Started");
                 await ProcessMovies();
                 await ProcessTv();
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Exception thrown in Plex availability checker");
+                await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                    .SendAsync(NotificationHub.NotificationEvent, "Plex Availability Check Failed");
+                _log.LogError(e, "Exception thrown in Plex availbility checker");
+                return;
             }
+
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Plex Availability Check Finished");
         }
 
-        private Task ProcessTv()
+        private async Task ProcessTv()
         {
-            var tv = _tvRepo.GetChild().Where(x => !x.Available).AsNoTracking();
-            return ProcessTv(tv);
+            var tv = await _tvRepo.GetChild().Where(x => !x.Available).ToListAsync();
+            await ProcessTv(tv);
         }
 
-        private async Task ProcessTv(IQueryable<ChildRequests> tv)
+        private async Task ProcessTv(List<ChildRequests> tv)
         {
-            var plexEpisodes = _repo.GetAllEpisodes().Include(x => x.Series).AsNoTracking();
+            var plexEpisodes = _repo.GetAllEpisodes().Include(x => x.Series);
 
             foreach (var child in tv)
             {
@@ -92,8 +105,8 @@ namespace Ombi.Schedule.Jobs.Plex
                 {
                     // Let's try and match the series by name
                     seriesEpisodes = plexEpisodes.Where(x =>
-                        x.Series.Title.Equals(child.Title, StringComparison.InvariantCultureIgnoreCase) &&
-                        x.Series.ReleaseYear.Equals(child.ParentRequest.ReleaseDate.Year.ToString(), StringComparison.InvariantCultureIgnoreCase));
+                        x.Series.Title == child.Title &&
+                        x.Series.ReleaseYear == child.ParentRequest.ReleaseDate.Year.ToString());
 
                 }
 
@@ -106,11 +119,11 @@ namespace Ombi.Schedule.Jobs.Plex
                         {
                             continue;
                         }
-                        var foundEp = await seriesEpisodes.FirstOrDefaultAsync(
+                        var foundEp = await seriesEpisodes.AnyAsync(
                             x => x.EpisodeNumber == episode.EpisodeNumber &&
                                  x.SeasonNumber == episode.Season.SeasonNumber);
 
-                        if (foundEp != null)
+                        if (foundEp)
                         {
                             availableEpisode.Add(new AvailabilityModel
                             {
@@ -122,18 +135,24 @@ namespace Ombi.Schedule.Jobs.Plex
                 }
 
                 //TODO Partial avilability notifications here
-                foreach(var c in availableEpisode)
+                if (availableEpisode.Any())
                 {
-                    await _tvRepo.MarkEpisodeAsAvailable(c.Id);
+                    await _tvRepo.Save();
                 }
-                
+                //foreach(var c in availableEpisode)
+                //{
+                //    await _tvRepo.MarkEpisodeAsAvailable(c.Id);
+                //}
+
                 // Check to see if all of the episodes in all seasons are available for this request
                 var allAvailable = child.SeasonRequests.All(x => x.Episodes.All(c => c.Available));
                 if (allAvailable)
                 {
+                    child.Available = true;
+                    child.MarkedAsAvailable = DateTime.UtcNow;
                     _log.LogInformation("[PAC] - Child request {0} is now available, sending notification", $"{child.Title} - {child.Id}");
                     // We have ful-fulled this request!
-                    await _tvRepo.MarkChildAsAvailable(child.Id);
+                    await _tvRepo.Save();
                     await _notificationService.Notify(new NotificationOptions
                     {
                         DateTime = DateTime.Now,
@@ -151,7 +170,7 @@ namespace Ombi.Schedule.Jobs.Plex
         private async Task ProcessMovies()
         {
             // Get all non available
-            var movies = _movieRepo.GetAll().Include(x => x.RequestedUser).Where(x => !x.Available).AsNoTracking();
+            var movies = _movieRepo.GetAll().Include(x => x.RequestedUser).Where(x => !x.Available);
             var itemsForAvailbility = new List<AvailabilityModel>();
 
             foreach (var movie in movies)
@@ -178,8 +197,10 @@ namespace Ombi.Schedule.Jobs.Plex
                     // We don't yet have this
                     continue;
                 }
-                
+
                 _log.LogInformation("[PAC] - Movie request {0} is now available, sending notification", $"{movie.Title} - {movie.Id}");
+                movie.Available = true;
+                movie.MarkedAsAvailable = DateTime.UtcNow;
                 itemsForAvailbility.Add(new AvailabilityModel
                 {
                     Id = movie.Id,
@@ -187,9 +208,12 @@ namespace Ombi.Schedule.Jobs.Plex
                 });
             }
 
+            if (itemsForAvailbility.Any())
+            {
+                await _movieRepo.SaveChangesAsync();
+            }
             foreach (var i in itemsForAvailbility)
             {
-                await _movieRepo.MarkAsAvailable(i.Id);
 
                 await _notificationService.Notify(new NotificationOptions
                 {
@@ -201,7 +225,7 @@ namespace Ombi.Schedule.Jobs.Plex
                 });
             }
 
-            await _repo.SaveChangesAsync();
+            //await _repo.SaveChangesAsync();
         }
 
         private bool _disposed;

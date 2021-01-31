@@ -16,5 +16,6 @@
         public string ExternalConnectionString { get; set; }
         public string SettingsConnectionString { get; set; }
         public string StoragePath { get; set; }
+        public bool NotSupported { get; set; }
     }
 }

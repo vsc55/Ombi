@@ -33,5 +33,7 @@ namespace Ombi.Store.Entities
         LocalUser = 1,
         PlexUser = 2,
         EmbyUser = 3,
+        EmbyConnectUser = 4,
+        JellyfinUser = 5,
     }
 }

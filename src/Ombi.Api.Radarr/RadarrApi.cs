@@ -69,7 +69,7 @@ namespace Ombi.Api.Radarr
             return await Api.Request<MovieResponse>(request);
         }
 
-        public async Task<RadarrAddMovieResponse> AddMovie(int tmdbId, string title, int year, int qualityId, string rootPath, string apiKey, string baseUrl, bool searchNow, string minimumAvailability)
+        public async Task<RadarrAddMovie> AddMovie(int tmdbId, string title, int year, int qualityId, string rootPath, string apiKey, string baseUrl, bool searchNow, string minimumAvailability)
         {
             var request = new Request("/api/movie", baseUrl, HttpMethod.Post);
 
@@ -110,7 +110,7 @@ namespace Ombi.Api.Radarr
                     var error = JsonConvert.DeserializeObject<List<RadarrErrorResponse>>(response).FirstOrDefault();
                     return new RadarrAddMovieResponse { Error = new RadarrError { message = error?.errorMessage } };
                 }
-                return JsonConvert.DeserializeObject<RadarrAddMovieResponse>(response);
+                return JsonConvert.DeserializeObject<RadarrAddMovie>(response);
             }
             catch (JsonSerializationException jse)
             {
@@ -123,6 +123,14 @@ namespace Ombi.Api.Radarr
         {
             var result = await Command(apiKey, baseUrl, new { name = "MoviesSearch", movieIds });
             return result != null;
+        }        
+        
+        public async Task<List<Tag>> GetTags(string apiKey, string baseUrl)
+        {
+            var request = new Request("/api/tag", baseUrl, HttpMethod.Get);
+            AddHeaders(request, apiKey);
+
+            return await Api.Request<List<Tag>>(request);
         }
 
         private async Task<CommandResult> Command(string apiKey, string baseUrl, object body)

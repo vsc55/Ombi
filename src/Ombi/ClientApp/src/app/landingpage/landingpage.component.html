@@ -1,0 +1,50 @@
+﻿<div *ngIf="landingPageSettings && customizationSettings">
+    <div *ngIf="background" @fadeInOut class="bg" [style.background-image]="background"></div>
+
+    <div class="small-middle-container">
+        <div class="row">
+            <div class="col-md-push-3 col-md-6">
+                <div *ngIf="customizationSettings.logo">
+                    <img [src]="customizationSettings.logo" style="width:100%"/>
+                </div>
+                <div *ngIf="!customizationSettings.logo">
+                    <img src="{{baseUrl}}/images/logo.png" style="width:100%" />
+                </div>
+            </div>
+            <div class="col-md-4 col-md-push-3 vcenter">
+                <div *ngIf="landingPageSettings.noticeEnabled">
+                    <h3><i class="fa fa-bell-o"></i>&nbsp;<b>Notice</b></h3>
+                    <span [innerHtml]="landingPageSettings.noticeText"></span>
+                </div>
+                <br>
+                <div *ngIf="!mediaServerStatus">
+                    <i class="fa fa-spinner fa-spin fa-3x fa-fw"></i>
+                </div>
+                <div *ngIf="mediaServerStatus">
+                    <div *ngIf="mediaServerStatus.fullyAvailable">
+                        <h3 class="online"><i class="fa fa-check-circle "></i> {{ 'LandingPage.OnlineHeading' | translate }}</h3>
+                        <span [translate]="'LandingPage.OnlineParagraph'"></span>
+                        <p [translate]="'LandingPage.CheckPageForUpdates'"></p>
+                    </div>
+                    <div *ngIf="mediaServerStatus.partiallyDown">
+                        <h3 class="partial"><i class="fa fa-exclamation-triangle "></i> {{ 'LandingPage.PartiallyOnlineHeading' | translate }}</h3>
+                        <span [translate]="'LandingPage.PartiallyOnlineParagraph'"></span>
+                        <p *ngIf="mediaServerStatus.serversUnavailable > 1" [translate]="'LandingPage.MultipleServersUnavailable'" [translateParams]="{serversUnavailable: mediaServerStatus.serversUnavailable, totalServers: mediaServerStatus.totalServers}"></p>
+                        <p *ngIf="mediaServerStatus.serversUnavailable == 1" [translate]="'LandingPage.SingleServerUnavailable'" [translateParams]="{serversUnavailable: mediaServerStatus.serversUnavailable, totalServers: mediaServerStatus.totalServers}">There is {{mediaServerStatus.serversUnavailable}} server offline out of {{mediaServerStatus.totalServers}}.</p>
+                        <p [translate]="'LandingPage.CheckPageForUpdates'"></p>
+                    </div>
+
+                    <div *ngIf="mediaServerStatus.completelyDown">
+                        <h3 class="offline"><i class="fa fa-times "></i> {{ 'LandingPage.OfflineHeading' | translate }}</h3>
+                        <span [translate]="'LandingPage.OfflineParagraph'"></span>
+                        <p [translate]="'LandingPage.CheckPageForUpdates'"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 offset-md-6 vcenter">
+                <button id="continue" mat-raised-button [routerLink]="['/login', 'true']" color="accent" type="submit">{{ 'Common.ContinueButton' | translate }}</button>
+            </div>
+        </div>
+    </div>
+
+</div>

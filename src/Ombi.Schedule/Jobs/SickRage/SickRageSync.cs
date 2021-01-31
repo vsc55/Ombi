@@ -45,19 +45,23 @@ namespace Ombi.Schedule.Jobs.SickRage
                 if (shows != null)
                 {
                     var srShows = shows.data.Values;
-                    var ids = srShows.Select(x => x.tvdbid);
-                    using (var tran = await _ctx.Database.BeginTransactionAsync())
+                    var ids = srShows.Select(x => x.tvdbid); 
+                    var strat = _ctx.Database.CreateExecutionStrategy();
+                    await strat.ExecuteAsync(async () =>
                     {
-                        await _ctx.Database.ExecuteSqlCommandAsync("DELETE FROM SickRageCache");
-                        tran.Commit();
-                    }
+                        using (var tran = await _ctx.Database.BeginTransactionAsync())
+                        {
+                            await _ctx.Database.ExecuteSqlRawAsync("DELETE FROM SickRageCache");
+                            tran.Commit();
+                        }
+                    });
 
                     var entites = ids.Select(id => new SickRageCache { TvDbId = id }).ToList();
 
                     await _ctx.SickRageCache.AddRangeAsync(entites);
 
                     var episodesToAdd = new List<SickRageEpisodeCache>();
-                    await _ctx.Database.ExecuteSqlCommandAsync("DELETE FROM SickRageEpisodeCache");
+                    await _ctx.Database.ExecuteSqlRawAsync("DELETE FROM SickRageEpisodeCache");
                     foreach (var s in srShows)
                     {
                         var seasons = await _api.GetSeasonList(s.tvdbid, settings.ApiKey, settings.FullUri);
@@ -77,13 +81,16 @@ namespace Ombi.Schedule.Jobs.SickRage
                         }
 
                     }
-
-                    using (var tran = await _ctx.Database.BeginTransactionAsync())
+                    strat = _ctx.Database.CreateExecutionStrategy();
+                    await strat.ExecuteAsync(async () =>
                     {
-                        await _ctx.SickRageEpisodeCache.AddRangeAsync(episodesToAdd);
-                        await _ctx.SaveChangesAsync();
-                        tran.Commit();
-                    }
+                        using (var tran = await _ctx.Database.BeginTransactionAsync())
+                        {
+                            await _ctx.SickRageEpisodeCache.AddRangeAsync(episodesToAdd);
+                            await _ctx.SaveChangesAsync();
+                            tran.Commit();
+                        }
+                    });
                 }
             }
             catch (Exception e)
@@ -100,7 +107,7 @@ namespace Ombi.Schedule.Jobs.SickRage
 
             if (disposing)
             {
-                _settings?.Dispose();
+                //_settings?.Dispose();
                 _ctx?.Dispose();
             }
             _disposed = true;

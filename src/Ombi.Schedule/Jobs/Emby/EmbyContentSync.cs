@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Ombi.Api.Emby;
 using Ombi.Api.Emby.Models.Movie;
 using Ombi.Core.Settings;
 using Ombi.Core.Settings.Models.External;
 using Ombi.Helpers;
+using Ombi.Hubs;
+using Ombi.Schedule.Jobs.Ombi;
 using Ombi.Store.Entities;
 using Ombi.Store.Repository;
 using Quartz;
@@ -17,26 +20,33 @@ namespace Ombi.Schedule.Jobs.Emby
 {
     public class EmbyContentSync : IEmbyContentSync
     {
-        public EmbyContentSync(ISettingsService<EmbySettings> settings, IEmbyApi api, ILogger<EmbyContentSync> logger,
-            IEmbyContentRepository repo)
+        public EmbyContentSync(ISettingsService<EmbySettings> settings, IEmbyApiFactory api, ILogger<EmbyContentSync> logger,
+            IEmbyContentRepository repo, IHubContext<NotificationHub> notification)
         {
             _logger = logger;
             _settings = settings;
-            _api = api;
+            _apiFactory = api;
             _repo = repo;
+            _notification = notification;
         }
 
         private readonly ILogger<EmbyContentSync> _logger;
         private readonly ISettingsService<EmbySettings> _settings;
-        private readonly IEmbyApi _api;
+        private readonly IEmbyApiFactory _apiFactory;
         private readonly IEmbyContentRepository _repo;
-
+        private readonly IHubContext<NotificationHub> _notification;
+        private IEmbyApi Api { get; set; }
 
         public async Task Execute(IJobExecutionContext job)
         {
             var embySettings = await _settings.GetSettingsAsync();
             if (!embySettings.Enable)
                 return;
+            
+            Api = _apiFactory.CreateClient(embySettings);
+
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Emby Content Sync Started");
 
             foreach (var server in embySettings.Servers)
             {
@@ -46,10 +56,14 @@ namespace Ombi.Schedule.Jobs.Emby
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "Exception when caching {1} for server {0}", server.Name, embySettings.IsJellyfin ? "Jellyfin" : "Emby");
+                    await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                        .SendAsync(NotificationHub.NotificationEvent, "Emby Content Sync Failed");
+                    _logger.LogError(e, "Exception when caching Emby for server {0}", server.Name);
                 }
             }
 
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Emby Content Sync Finished");
             // Episodes
 
             await OmbiQuartz.TriggerJob(nameof(IEmbyEpisodeSync), "Emby");
@@ -64,7 +78,7 @@ namespace Ombi.Schedule.Jobs.Emby
             //await _repo.ExecuteSql("DELETE FROM EmbyEpisode");
             //await _repo.ExecuteSql("DELETE FROM EmbyContent");
 
-            var movies = await _api.GetAllMovies(server.ApiKey, 0, 200, server.AdministratorId, server.FullUri);
+            var movies = await Api.GetAllMovies(server.ApiKey, 0, 200, server.AdministratorId, server.FullUri);
             var totalCount = movies.TotalRecordCount;
             var processed = 1;
 
@@ -77,7 +91,7 @@ namespace Ombi.Schedule.Jobs.Emby
                     if (movie.Type.Equals("boxset", StringComparison.InvariantCultureIgnoreCase))
                     {
                         var movieInfo =
-                            await _api.GetCollection(movie.Id, server.ApiKey, server.AdministratorId, server.FullUri);
+                            await Api.GetCollection(movie.Id, server.ApiKey, server.AdministratorId, server.FullUri);
                         foreach (var item in movieInfo.Items)
                         {
                             await ProcessMovies(item, mediaToAdd, server);
@@ -94,7 +108,7 @@ namespace Ombi.Schedule.Jobs.Emby
                 }
 
                 // Get the next batch
-                movies = await _api.GetAllMovies(server.ApiKey, processed, 200, server.AdministratorId, server.FullUri);
+                movies = await Api.GetAllMovies(server.ApiKey, processed, 200, server.AdministratorId, server.FullUri);
                 await _repo.AddRange(mediaToAdd);
                 mediaToAdd.Clear();
 
@@ -102,7 +116,7 @@ namespace Ombi.Schedule.Jobs.Emby
 
 
             // TV Time
-            var tv = await _api.GetAllShows(server.ApiKey, 0, 200, server.AdministratorId, server.FullUri);
+            var tv = await Api.GetAllShows(server.ApiKey, 0, 200, server.AdministratorId, server.FullUri);
             var totalTv = tv.TotalRecordCount;
             processed = 1;
             while (processed < totalTv)
@@ -131,7 +145,7 @@ namespace Ombi.Schedule.Jobs.Emby
                                 Title = tvShow.Name,
                                 Type = EmbyMediaType.Series,
                                 EmbyId = tvShow.Id,
-                                Url = EmbyHelper.GetEmbyMediaUrl(tvShow.Id, server.ServerHostname, settings.IsJellyfin),
+                                Url = EmbyHelper.GetEmbyMediaUrl(tvShow.Id, server?.ServerId, server.ServerHostname),
                                 AddedAt = DateTime.UtcNow
                             });
                         }
@@ -148,7 +162,7 @@ namespace Ombi.Schedule.Jobs.Emby
                     }
                 }
                 // Get the next batch
-                tv = await _api.GetAllShows(server.ApiKey, processed, 200, server.AdministratorId, server.FullUri);
+                tv = await Api.GetAllShows(server.ApiKey, processed, 200, server.AdministratorId, server.FullUri);
                 await _repo.AddRange(mediaToAdd);
                 mediaToAdd.Clear();
             }
@@ -172,7 +186,7 @@ namespace Ombi.Schedule.Jobs.Emby
                     Title = movieInfo.Name,
                     Type = EmbyMediaType.Movie,
                     EmbyId = movieInfo.Id,
-                    Url = EmbyHelper.GetEmbyMediaUrl(movieInfo.Id, server.ServerHostname),
+                    Url = EmbyHelper.GetEmbyMediaUrl(movieInfo.Id, server?.ServerId, server.ServerHostname),
                     AddedAt = DateTime.UtcNow,
                 });
             }
@@ -202,7 +216,7 @@ namespace Ombi.Schedule.Jobs.Emby
 
             if (disposing)
             {
-                _settings?.Dispose();
+                //_settings?.Dispose();
             }
             _disposed = true;
         }

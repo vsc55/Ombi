@@ -28,10 +28,13 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ombi.Core;
+using Ombi.Core.Notifications;
 using Ombi.Helpers;
+using Ombi.Hubs;
 using Ombi.Notifications.Models;
 using Ombi.Schedule.Jobs.Ombi;
 using Ombi.Store.Entities;
@@ -44,13 +47,14 @@ namespace Ombi.Schedule.Jobs.Emby
     public class EmbyAvaliabilityChecker : IEmbyAvaliabilityChecker
     {
         public EmbyAvaliabilityChecker(IEmbyContentRepository repo, ITvRequestRepository t, IMovieRequestRepository m,
-            INotificationHelper n, ILogger<EmbyAvaliabilityChecker> log)
+            INotificationHelper n, ILogger<EmbyAvaliabilityChecker> log, IHubContext<NotificationHub> notification)
         {
             _repo = repo;
             _tvRepo = t;
             _movieRepo = m;
             _notificationService = n;
             _log = log;
+            _notification = notification;
         }
 
         private readonly ITvRequestRepository _tvRepo;
@@ -58,13 +62,19 @@ namespace Ombi.Schedule.Jobs.Emby
         private readonly IEmbyContentRepository _repo;
         private readonly INotificationHelper _notificationService;
         private readonly ILogger<EmbyAvaliabilityChecker> _log;
+        private readonly IHubContext<NotificationHub> _notification;
 
         public async Task Execute(IJobExecutionContext job)
         {
+            _log.LogInformation("Starting Emby Availability Check");
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Emby Availability Checker Started");
             await ProcessMovies();
             await ProcessTv();
 
-            await OmbiQuartz.TriggerJob(nameof(IRefreshMetadata), "System");
+            _log.LogInformation("Finished Emby Availability Check");
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Emby Availability Checker Finished");
         }
 
         private async Task ProcessMovies()
@@ -160,7 +170,7 @@ namespace Ombi.Schedule.Jobs.Emby
                 {
                     // Let's try and match the series by name
                     seriesEpisodes = embyEpisodes.Where(x =>
-                        x.Series.Title.Equals(child.Title, StringComparison.CurrentCultureIgnoreCase));
+                        x.Series.Title == child.Title);
                 }
 
                 foreach (var season in child.SeasonRequests)

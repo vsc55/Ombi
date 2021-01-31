@@ -65,14 +65,17 @@ namespace Ombi.Core.Rule.Rules.Search
             {
                 obj.Available = true;
                 var s = await EmbySettings.GetSettingsAsync();
-                var server = s.Servers.FirstOrDefault(x => x.ServerHostname != null);
-                if ((server?.ServerHostname ?? string.Empty).HasValue())
+                if (s.Enable)
                 {
-                    obj.EmbyUrl = EmbyHelper.GetEmbyMediaUrl(item.EmbyId, server?.ServerHostname, s.IsJellyfin);
-                }
-                else
-                {
-                    obj.EmbyUrl = EmbyHelper.GetEmbyMediaUrl(item.EmbyId, null, s.IsJellyfin);
+                    var server = s.Servers.FirstOrDefault(x => x.ServerHostname != null);
+                    if ((server?.ServerHostname ?? string.Empty).HasValue())
+                    {
+                        obj.EmbyUrl = EmbyHelper.GetEmbyMediaUrl(item.EmbyId, server?.ServerId, server?.ServerHostname);
+                    }
+                    else
+                    {
+                        obj.EmbyUrl = EmbyHelper.GetEmbyMediaUrl(item.EmbyId, server?.ServerId, null);
+                    }
                 }
 
                 if (obj.Type == RequestType.TvShow)

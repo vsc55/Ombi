@@ -1,0 +1,20 @@
+
+    <section id="summary-wrapper">
+        <div class="full-screenshot enabled" [style.background-image]="background"></div>
+        <div class="shadow-base" [ngClass]="available ? 'available-bottom-border' : ''"></div>
+
+        <div class="container summary">
+            <div class="container title-top-banner">
+                <div class="row">
+                    <div
+                        class="mobile-top-text">
+                        <h1 class="large-text">{{title}} <span *ngIf="releaseDate" class="grey-text">
+                            ({{releaseDate | amLocal | amDateFormat: 'YYYY'}})</span>
+                        </h1>
+
+                        <h2 class="tagline">{{tagline}}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>

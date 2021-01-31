@@ -18,6 +18,7 @@ namespace Ombi.Store.Context
 
         }
 
+
         /// <summary>
         /// This allows a sub class to call the base class 'DbContext' non typed constructor
         /// This is need because instances of the subclasses will use a specific typed DbContextOptions
@@ -50,28 +51,33 @@ namespace Ombi.Store.Context
         public DbSet<Tokens> Tokens { get; set; }
         public DbSet<RequestSubscription> RequestSubscription { get; set; }
         public DbSet<UserNotificationPreferences> UserNotificationPreferences { get; set; }
+        public DbSet<MobileDevices> MobileDevices { get; set; }
         public DbSet<UserQualityProfiles> UserQualityProfileses { get; set; }
         public DbSet<RequestQueue> RequestQueue { get; set; }
 
         public void Seed()
         {
-
-            using (var tran = Database.BeginTransaction())
+            var strat = Database.CreateExecutionStrategy();
+            strat.Execute(() =>
             {
-                // Make sure we have the API User
-                var apiUserExists = Users.Any(x => x.UserName.Equals("Api", StringComparison.CurrentCultureIgnoreCase));
-                if (!apiUserExists)
+                using (var tran = Database.BeginTransaction())
                 {
-                    Users.Add(new OmbiUser
+                    // Make sure we have the API User
+                    var apiUserExists = Users.ToList().Any(x => x.NormalizedUserName == "API");
+                    if (!apiUserExists)
                     {
-                        UserName = "Api",
-                        UserType = UserType.SystemUser,
-                        NormalizedUserName = "API",
-                    });
-                    SaveChanges();
-                    tran.Commit();
+                        Users.Add(new OmbiUser
+                        {
+                            UserName = "Api",
+                            UserType = UserType.SystemUser,
+                            NormalizedUserName = "API",
+                            StreamingCountry = "US"
+                        });
+                        SaveChanges();
+                        tran.Commit();
+                    }
                 }
-            }
+            });
 
             //Check if templates exist
             var templates = NotificationTemplates.ToList();
@@ -91,7 +97,7 @@ namespace Ombi.Store.Context
                     }
 
                     needToSave = true;
-                    NotificationTemplates notificationToAdd;
+                    NotificationTemplates notificationToAdd = null;
                     switch (notificationType)
                     {
                         case NotificationType.NewRequest:
@@ -118,7 +124,7 @@ namespace Ombi.Store.Context
                             notificationToAdd = new NotificationTemplates
                             {
                                 NotificationType = notificationType,
-                                Message = "Hello! Your request for {Title} on {ApplicationName} is now available.",
+                                Message = "Hello! Your request for {Title} on {ApplicationName} is now available! :)",
                                 Subject = "{ApplicationName}: {Title} is now available!",
                                 Agent = agent,
                                 Enabled = true,
@@ -140,7 +146,7 @@ namespace Ombi.Store.Context
                             notificationToAdd = new NotificationTemplates
                             {
                                 NotificationType = notificationType,
-                                Message = "Hello! Your request for {Title} has been declined.",
+                                Message = "Hello! Your request for {Title} has been declined, Sorry!",
                                 Subject = "{ApplicationName}: your request has been declined",
                                 Agent = agent,
                                 Enabled = true,
@@ -150,27 +156,30 @@ namespace Ombi.Store.Context
                             notificationToAdd = new NotificationTemplates
                             {
                                 NotificationType = notificationType,
-                                Message = "Hello! The user '{UserName}' has requested {Title} but it could not be added. This has been added into the requests queue and it will keep retrying",
+                                Message = "Hello! The user '{UserName}' has requested {Title} but it could not be added. This has been added into the requests queue and will keep retrying",
                                 Subject = "Item Added To Retry Queue",
                                 Agent = agent,
                                 Enabled = true,
                             };
                             break;
                         case NotificationType.WelcomeEmail:
-                            notificationToAdd = new NotificationTemplates
+                            if (agent == NotificationAgent.Email)
                             {
-                                NotificationType = notificationType,
-                                Message = "Hello! You have been invited to use {ApplicationName}. You can login here: {ApplicationUrl}",
-                                Subject = "Invite to {ApplicationName}",
-                                Agent = agent,
-                                Enabled = true,
-                            };
+                                notificationToAdd = new NotificationTemplates
+                                {
+                                    NotificationType = notificationType,
+                                    Message = "Hello! You have been invited to use {ApplicationName}! You can login here: {ApplicationUrl}",
+                                    Subject = "Invite to {ApplicationName}",
+                                    Agent = agent,
+                                    Enabled = true,
+                                };
+                            }
                             break;
                         case NotificationType.IssueResolved:
                             notificationToAdd = new NotificationTemplates
                             {
                                 NotificationType = notificationType,
-                                Message = "Hello {UserName}, your issue for {Title} has now been resolved.",
+                                Message = "Hello {UserName} Your issue for {Title} has now been resolved.",
                                 Subject = "{ApplicationName}: Issue has been resolved for {Title}!",
                                 Agent = agent,
                                 Enabled = true,
@@ -181,7 +190,7 @@ namespace Ombi.Store.Context
                             notificationToAdd = new NotificationTemplates
                             {
                                 NotificationType = notificationType,
-                                Message = "Hello, There is a new comment on your issue {IssueSubject}. The comment is: {NewIssueComment}",
+                                Message = "Hello, There is a new comment on your issue {IssueSubject}, The comment is: {NewIssueComment}",
                                 Subject = "{ApplicationName}: New comment on issue {IssueSubject}!",
                                 Agent = agent,
                                 Enabled = true,
@@ -193,7 +202,7 @@ namespace Ombi.Store.Context
                             notificationToAdd = new NotificationTemplates
                             {
                                 NotificationType = notificationType,
-                                Message = "Here is a list of Movies and TV Shows that have recently been added:",
+                                Message = "Here is a list of Movies and TV Shows that have recently been added!",
                                 Subject = "{ApplicationName}: Recently Added Content!",
                                 Agent = agent,
                                 Enabled = true,
@@ -202,18 +211,23 @@ namespace Ombi.Store.Context
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
-                    NotificationTemplates.Add(notificationToAdd);
+                    if (notificationToAdd != null)
+                    {
+                        NotificationTemplates.Add(notificationToAdd);
+                    }
                 }
             }
 
             if (needToSave)
             {
-
-                using (var tran = Database.BeginTransaction())
+                strat.Execute(() =>
                 {
-                    SaveChanges();
-                    tran.Commit();
-                }
+                    using (var tran = Database.BeginTransaction())
+                    {
+                        SaveChanges();
+                        tran.Commit();
+                    }
+                });
             }
         }
     }

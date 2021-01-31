@@ -29,49 +29,61 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Ombi.Api.Emby;
 using Ombi.Core.Settings;
 using Ombi.Core.Settings.Models.External;
+using Ombi.Hubs;
 using Ombi.Helpers;
 using Ombi.Store.Entities;
 using Ombi.Store.Repository;
 using Quartz;
+using Ombi.Schedule.Jobs.Ombi;
 
 namespace Ombi.Schedule.Jobs.Emby
 {
     public class EmbyEpisodeSync : IEmbyEpisodeSync
     {
-        public EmbyEpisodeSync(ISettingsService<EmbySettings> s, IEmbyApi api, ILogger<EmbyEpisodeSync> l, IEmbyContentRepository repo)
+        public EmbyEpisodeSync(ISettingsService<EmbySettings> s, IEmbyApiFactory api, ILogger<EmbyEpisodeSync> l, IEmbyContentRepository repo
+            , IHubContext<NotificationHub> notification)
         {
-            _api = api;
+            _apiFactory = api;
             _logger = l;
             _settings = s;
             _repo = repo;
+            _notification = notification;
         }
 
         private readonly ISettingsService<EmbySettings> _settings;
-        private readonly IEmbyApi _api;
+        private readonly IEmbyApiFactory _apiFactory;
         private readonly ILogger<EmbyEpisodeSync> _logger;
         private readonly IEmbyContentRepository _repo;
+        private readonly IHubContext<NotificationHub> _notification;
+        private IEmbyApi Api { get; set; }
 
 
         public async Task Execute(IJobExecutionContext job)
         {
             var settings = await _settings.GetSettingsAsync();
-
+            
+            Api = _apiFactory.CreateClient(settings);
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Emby Episode Sync Started");
             foreach (var server in settings.Servers)
             {
                 await CacheEpisodes(server);
             }
 
-
-            await OmbiQuartz.TriggerJob(nameof(IEmbyAvaliabilityChecker), "Emby");
+            await _notification.Clients.Clients(NotificationHub.AdminConnectionIds)
+                .SendAsync(NotificationHub.NotificationEvent, "Emby Episode Sync Finished");
+            _logger.LogInformation("Emby Episode Sync Finished - Triggering Metadata refresh");
+            await OmbiQuartz.TriggerJob(nameof(IRefreshMetadata), "System");
         }
 
         private async Task CacheEpisodes(EmbyServers server)
         {
-            var allEpisodes = await _api.GetAllEpisodes(server.ApiKey, 0, 200, server.AdministratorId, server.FullUri);
+            var allEpisodes = await Api.GetAllEpisodes(server.ApiKey, 0, 200, server.AdministratorId, server.FullUri);
             var total = allEpisodes.TotalRecordCount;
             var processed = 1;
             var epToAdd = new HashSet<EmbyEpisode>();
@@ -138,7 +150,7 @@ namespace Ombi.Schedule.Jobs.Emby
 
                 await _repo.AddRange(epToAdd);
                 epToAdd.Clear();
-                allEpisodes = await _api.GetAllEpisodes(server.ApiKey, processed, 200, server.AdministratorId, server.FullUri);
+                allEpisodes = await Api.GetAllEpisodes(server.ApiKey, processed, 200, server.AdministratorId, server.FullUri);
             }
 
             if (epToAdd.Any())
@@ -155,7 +167,7 @@ namespace Ombi.Schedule.Jobs.Emby
 
             if (disposing)
             {
-                _settings?.Dispose();
+                //_settings?.Dispose();
             }
             _disposed = true;
         }

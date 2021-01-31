@@ -27,6 +27,7 @@
 
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Ombi.Core.Settings;
 using Ombi.Helpers;
@@ -46,6 +47,7 @@ namespace Ombi.Api
         {
             _cache = cache;
             _settings = s;
+            _runtimeVersion = AssemblyHelper.GetRuntimeVersion();
         }
 
         private static HttpClient _client;
@@ -53,12 +55,19 @@ namespace Ombi.Api
 
         private readonly ICacheService _cache;
         private readonly ISettingsService<OmbiSettings> _settings;
+        private readonly string _runtimeVersion;
 
 
         public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
         {
             await Setup();
             return await _client.SendAsync(request);
+        }
+
+        public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Setup();
+            return await _client.SendAsync(request, cancellationToken);
         }
 
         public async Task<string> GetStringAsync(Uri requestUri)
@@ -77,7 +86,7 @@ namespace Ombi.Api
                     _handler = await GetHandler();
                 }
                 _client = new HttpClient(_handler);
-                _client.DefaultRequestHeaders.Add("User-Agent","Ombi");
+                _client.DefaultRequestHeaders.Add("User-Agent",$"Ombi/{_runtimeVersion} (https://ombi.io/)");
             }
         }
 

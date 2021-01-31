@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Ombi.Api.Discord;
 using Ombi.Api.Emby;
+using Ombi.Api.Jellyfin;
 using Ombi.Api.Plex;
 using Ombi.Api.Radarr;
 using Ombi.Api.Sonarr;
@@ -32,6 +33,7 @@ using Ombi.Api.DogNzb;
 using Ombi.Api.FanartTv;
 using Ombi.Api.Github;
 using Ombi.Api.Gotify;
+using Ombi.Api.GroupMe;
 using Ombi.Api.Webhook;
 using Ombi.Api.Lidarr;
 using Ombi.Api.Mattermost;
@@ -46,22 +48,26 @@ using Ombi.Core.Senders;
 using Ombi.Helpers;
 using Ombi.Schedule.Jobs.Couchpotato;
 using Ombi.Schedule.Jobs.Emby;
+using Ombi.Schedule.Jobs.Jellyfin;
 using Ombi.Schedule.Jobs.Ombi;
 using Ombi.Schedule.Jobs.Plex;
 using Ombi.Schedule.Jobs.Sonarr;
 using Ombi.Store.Repository.Requests;
 using Ombi.Updater;
-using PlexContentCacher = Ombi.Schedule.Jobs.Plex;
 using Ombi.Api.Telegram;
 using Ombi.Core.Authentication;
 using Ombi.Core.Engine.Demo;
+using Ombi.Core.Engine.V2;
 using Ombi.Core.Processor;
 using Ombi.Schedule.Jobs.Lidarr;
 using Ombi.Schedule.Jobs.Plex.Interfaces;
 using Ombi.Schedule.Jobs.SickRage;
 using Ombi.Schedule.Processor;
-using Ombi.Store.Entities;
 using Quartz.Spi;
+using Ombi.Api.MusicBrainz;
+using Ombi.Api.Twilio;
+using Ombi.Api.CloudService;
+using Ombi.Api.RottenTomatoes;
 
 namespace Ombi.DependencyInjection
 {
@@ -71,6 +77,7 @@ namespace Ombi.DependencyInjection
         public static void RegisterApplicationDependencies(this IServiceCollection services)
         {
             services.RegisterEngines();
+            services.RegisterEnginesV2();
             services.RegisterApi();
             services.RegisterServices();
             services.RegisterStore();
@@ -97,7 +104,18 @@ namespace Ombi.DependencyInjection
             services.AddTransient<IVoteEngine, VoteEngine>();
             services.AddTransient<IDemoMovieSearchEngine, DemoMovieSearchEngine>();
             services.AddTransient<IDemoTvSearchEngine, DemoTvSearchEngine>();
+            services.AddTransient<IUserDeletionEngine, UserDeletionEngine>();
         }
+
+        public static void RegisterEnginesV2(this IServiceCollection services)
+        {
+            services.AddTransient<IMultiSearchEngine, MultiSearchEngine>();
+            services.AddTransient<IMovieEngineV2, MovieSearchEngineV2>();
+            services.AddTransient<ITVSearchEngineV2, TvSearchEngineV2>();
+            services.AddTransient<ICalendarEngine, CalendarEngine>();
+            services.AddTransient<IMusicSearchEngineV2, MusicSearchEngineV2>();
+        }
+
         public static void RegisterHttp(this IServiceCollection services)
         {
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
@@ -106,17 +124,19 @@ namespace Ombi.DependencyInjection
 
         public static void RegisterApi(this IServiceCollection services)
         {
-            services.AddSingleton<IApi, Api.Api>();
-            services.AddSingleton<IOmbiHttpClient, OmbiHttpClient>(); // https://blogs.msdn.microsoft.com/alazarev/2017/12/29/disposable-finalizers-and-httpclient/
+            services.AddScoped<IApi, Api.Api>();
+            services.AddScoped<IOmbiHttpClient, OmbiHttpClient>(); // https://blogs.msdn.microsoft.com/alazarev/2017/12/29/disposable-finalizers-and-httpclient/
             services.AddTransient<IMovieDbApi, Api.TheMovieDb.TheMovieDbApi>();
             services.AddTransient<IPlexApi, PlexApi>();
             services.AddTransient<IEmbyApi, EmbyApi>();
+            services.AddTransient<IJellyfinApi, JellyfinApi>();
             services.AddTransient<ISonarrApi, SonarrApi>();
             services.AddTransient<ISonarrV3Api, SonarrV3Api>();
             services.AddTransient<ISlackApi, SlackApi>();
             services.AddTransient<ITvMazeApi, TvMazeApi>();
             services.AddTransient<ITraktApi, TraktApi>();
             services.AddTransient<IRadarrApi, RadarrApi>();
+            services.AddTransient<IRadarrV3Api, RadarrV3Api>();
             services.AddTransient<IDiscordApi, DiscordApi>();
             services.AddTransient<IPushbulletApi, PushbulletApi>();
             services.AddTransient<IOmbiService, OmbiService>();
@@ -133,6 +153,13 @@ namespace Ombi.DependencyInjection
             services.AddTransient<IAppVeyorApi, AppVeyorApi>();
             services.AddTransient<IOneSignalApi, OneSignalApi>();
             services.AddTransient<ILidarrApi, LidarrApi>();
+            services.AddTransient<IGroupMeApi, GroupMeApi>();
+            services.AddTransient<IMusicBrainzApi, MusicBrainzApi>();
+            services.AddTransient<IWhatsAppApi, WhatsAppApi>();
+            services.AddTransient<ICloudMobileNotification, CloudMobileNotification>();
+            services.AddTransient<IEmbyApiFactory, EmbyApiFactory>();
+            services.AddTransient<IJellyfinApiFactory, JellyfinApiFactory>();
+            services.AddTransient<IRottenTomatoesApi, RottenTomatoesApi>();
         }
 
         public static void RegisterStore(this IServiceCollection services) { 
@@ -147,6 +174,7 @@ namespace Ombi.DependencyInjection
             services.AddScoped<ISettingsResolver, SettingsResolver>();
             services.AddScoped<IPlexContentRepository, PlexServerContentRepository>();
             services.AddScoped<IEmbyContentRepository, EmbyContentRepository>();
+            services.AddScoped<IJellyfinContentRepository, JellyfinContentRepository>();
             services.AddScoped<INotificationTemplatesRepository, NotificationTemplatesRepository>();
             
             services.AddScoped<ITvRequestRepository, TvRequestRepository>();
@@ -166,6 +194,7 @@ namespace Ombi.DependencyInjection
             services.AddTransient<IEmailProvider, GenericEmailProvider>();
             services.AddTransient<INotificationHelper, NotificationHelper>();
             services.AddSingleton<ICacheService, CacheService>();
+            services.AddScoped<IImageService, ImageService>();
 
             services.AddTransient<IDiscordNotification, DiscordNotification>();
             services.AddTransient<IEmailNotification, EmailNotification>();
@@ -177,7 +206,7 @@ namespace Ombi.DependencyInjection
             services.AddTransient<IGotifyNotification, GotifyNotification>();
             services.AddTransient<IWebhookNotification, WebhookNotification>();
             services.AddTransient<ITelegramNotification, TelegramNotification>();
-            services.AddTransient<IMobileNotification, MobileNotification>();
+            services.AddTransient<ILegacyMobileNotification, LegacyMobileNotification>();
             services.AddTransient<IChangeLogProcessor, ChangeLogProcessor>();
         }
 
@@ -190,6 +219,9 @@ namespace Ombi.DependencyInjection
             services.AddTransient<IEmbyContentSync, EmbyContentSync>();
             services.AddTransient<IEmbyEpisodeSync, EmbyEpisodeSync>();
             services.AddTransient<IEmbyAvaliabilityChecker, EmbyAvaliabilityChecker>();
+            services.AddTransient<IJellyfinContentSync, JellyfinContentSync>();
+            services.AddTransient<IJellyfinEpisodeSync, JellyfinEpisodeSync>();
+            services.AddTransient<IJellyfinAvaliabilityChecker, JellyfinAvaliabilityChecker>();
             services.AddTransient<IPlexEpisodeSync, PlexEpisodeSync>();
             services.AddTransient<IPlexAvailabilityChecker, PlexAvailabilityChecker>();
             services.AddTransient<IRadarrSync, RadarrSync>();
@@ -197,19 +229,21 @@ namespace Ombi.DependencyInjection
             services.AddTransient<IOmbiAutomaticUpdater, OmbiAutomaticUpdater>();
             services.AddTransient<IPlexUserImporter, PlexUserImporter>();
             services.AddTransient<IEmbyUserImporter, EmbyUserImporter>();
+            services.AddTransient<IJellyfinUserImporter, JellyfinUserImporter>();
             services.AddTransient<IWelcomeEmail, WelcomeEmail>();
             services.AddTransient<ICouchPotatoSync, CouchPotatoSync>();
             services.AddTransient<IProcessProvider, ProcessProvider>();
             services.AddTransient<ISickRageSync, SickRageSync>();
             services.AddTransient<IRefreshMetadata, RefreshMetadata>();
             services.AddTransient<INewsletterJob, NewsletterJob>();
-            //services.AddTransient<IPlexRecentlyAddedSync, PlexRecentlyAddedSync>();
             services.AddTransient<ILidarrAlbumSync, LidarrAlbumSync>();
             services.AddTransient<ILidarrArtistSync, LidarrArtistSync>();
             services.AddTransient<ILidarrAvailabilityChecker, LidarrAvailabilityChecker>();
             services.AddTransient<IIssuesPurge, IssuesPurge>();
             services.AddTransient<IResendFailedRequests, ResendFailedRequests>();
             services.AddTransient<IMediaDatabaseRefresh, MediaDatabaseRefresh>();
+            services.AddTransient<IArrAvailabilityChecker, ArrAvailabilityChecker>();
+            services.AddTransient<IAutoDeleteRequests, AutoDeleteRequests>();
         }
     }
 }

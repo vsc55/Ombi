@@ -15,6 +15,8 @@ using Ombi.Core.Settings;
 using Ombi.Settings.Settings.Models;
 using Ombi.Store.Entities;
 using Ombi.Store.Repository;
+using Ombi.Api.TheMovieDb.Models;
+using Ombi.Core.Helpers;
 
 namespace Ombi.Core.Engine
 {
@@ -32,7 +34,12 @@ namespace Ombi.Core.Engine
             OmbiSettings = ombiSettings;
             _subscriptionRepository = sub;
         }
-
+        private int _resultLimit;
+        public int ResultLimit
+        {
+            get => _resultLimit > 0 ? _resultLimit : 10;
+            set => _resultLimit = value;
+        }
         protected IRequestServiceMain RequestService { get; }
         protected IMovieRequestRepository MovieRepository => RequestService.MovieRequestService;
         protected ITvRequestRepository TvRepository => RequestService.TvRequestService;
@@ -131,7 +138,7 @@ namespace Ombi.Core.Engine
         {
             var user = await GetUser();
             var existingSub = await _subscriptionRepository.GetAll().FirstOrDefaultAsync(x =>
-                x.UserId.Equals(user.Id) && x.RequestId == requestId && x.RequestType == type);
+                x.UserId == user.Id && x.RequestId == requestId && x.RequestType == type);
             if (existingSub != null)
             {
                 return;
@@ -150,23 +157,34 @@ namespace Ombi.Core.Engine
         {
             var user = await GetUser();
             var existingSub = await _subscriptionRepository.GetAll().FirstOrDefaultAsync(x =>
-                x.UserId.Equals(user.Id) && x.RequestId == requestId && x.RequestType == type);
+                x.UserId == user.Id && x.RequestId == requestId && x.RequestType == type);
             if (existingSub != null)
             {
                 await _subscriptionRepository.Delete(existingSub);
             }
         }
 
-        private string defaultLangCode;
         protected async Task<string> DefaultLanguageCode(string currentCode)
         {
             if (currentCode.HasValue())
             {
                 return currentCode;
             }
+            var user = await GetUser();
 
-            var s = await GetOmbiSettings();
-            return s.DefaultLanguageCode;
+            if (string.IsNullOrEmpty(user.Language))
+            {
+                var s = await GetOmbiSettings();
+                return s.DefaultLanguageCode;
+            }
+
+            return user.Language;
+        }
+
+        protected async Task<List<StreamData>> GetUserWatchProvider(WatchProviders providers)
+        {
+            var user = await GetUser();
+            return WatchProviderParser.GetUserWatchProviders(providers, user);
         }
 
         private OmbiSettings ombiSettings;

@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
 using Ombi.Core.Notifications;
 using Ombi.Core.Settings;
 using Ombi.Helpers;
 using Ombi.Schedule.Jobs;
 using Ombi.Schedule.Jobs.Couchpotato;
 using Ombi.Schedule.Jobs.Emby;
+using Ombi.Schedule.Jobs.Jellyfin;
 using Ombi.Schedule.Jobs.Lidarr;
 using Ombi.Schedule.Jobs.Ombi;
 using Ombi.Schedule.Jobs.Plex;
@@ -16,7 +16,6 @@ using Ombi.Schedule.Jobs.Radarr;
 using Ombi.Schedule.Jobs.SickRage;
 using Ombi.Schedule.Jobs.Sonarr;
 using Ombi.Settings.Settings.Models;
-using Quartz;
 using Quartz.Spi;
 
 namespace Ombi.Schedule
@@ -41,11 +40,11 @@ namespace Ombi.Schedule
         //        .Build();
         //}
 
-        public static async Task UseQuartz(this IApplicationBuilder app)
+        public static async Task UseQuartz(this IServiceProvider app)
         {
             // Job Factory through IOC container
-            var jobFactory = (IJobFactory)app.ApplicationServices.GetService(typeof(IJobFactory));
-            var service = (ISettingsService<JobSettings>)app.ApplicationServices.GetService(typeof(ISettingsService<JobSettings>));
+            var jobFactory = (IJobFactory)app.GetService(typeof(IJobFactory));
+            var service = (ISettingsService<JobSettings>)app.GetService(typeof(ISettingsService<JobSettings>));
             var s = service.GetSettings();
             // Set job factory
             OmbiQuartz.Instance.UseJobFactory(jobFactory);
@@ -53,6 +52,7 @@ namespace Ombi.Schedule
             // Run configuration
             await AddPlex(s);
             await AddEmby(s);
+            await AddJellyfin(s);
             await AddDvrApps(s);
             await AddSystem(s);
             await AddNotifications(s);
@@ -69,15 +69,19 @@ namespace Ombi.Schedule
             await OmbiQuartz.Instance.AddJob<INewsletterJob>(nameof(INewsletterJob), "System", JobSettingsHelper.Newsletter(s));
             await OmbiQuartz.Instance.AddJob<IResendFailedRequests>(nameof(IResendFailedRequests), "System", JobSettingsHelper.ResendFailedRequests(s));
             await OmbiQuartz.Instance.AddJob<IMediaDatabaseRefresh>(nameof(IMediaDatabaseRefresh), "System", JobSettingsHelper.MediaDatabaseRefresh(s));
+            await OmbiQuartz.Instance.AddJob<IAutoDeleteRequests>(nameof(IAutoDeleteRequests), "System", JobSettingsHelper.AutoDeleteRequests(s));
         }
 
         private static async Task AddDvrApps(JobSettings s)
         {
             await OmbiQuartz.Instance.AddJob<ISonarrSync>(nameof(ISonarrSync), "DVR", JobSettingsHelper.Sonarr(s));
             await OmbiQuartz.Instance.AddJob<IRadarrSync>(nameof(IRadarrSync), "DVR", JobSettingsHelper.Radarr(s));
+            await OmbiQuartz.Instance.AddJob<IArrAvailabilityChecker>(nameof(IArrAvailabilityChecker), "DVR", null);
             await OmbiQuartz.Instance.AddJob<ICouchPotatoSync>(nameof(ICouchPotatoSync), "DVR", JobSettingsHelper.CouchPotato(s));
             await OmbiQuartz.Instance.AddJob<ISickRageSync>(nameof(ISickRageSync), "DVR", JobSettingsHelper.SickRageSync(s));
             await OmbiQuartz.Instance.AddJob<ILidarrArtistSync>(nameof(ILidarrArtistSync), "DVR", JobSettingsHelper.LidarrArtistSync(s));
+            await OmbiQuartz.Instance.AddJob<ILidarrAlbumSync>(nameof(ILidarrAlbumSync), "DVR", null);
+            await OmbiQuartz.Instance.AddJob<ILidarrAvailabilityChecker>(nameof(ILidarrAvailabilityChecker), "DVR", null);
         }
 
         private static async Task AddPlex(JobSettings s)
@@ -96,6 +100,15 @@ namespace Ombi.Schedule
             await OmbiQuartz.Instance.AddJob<IEmbyAvaliabilityChecker>(nameof(IEmbyAvaliabilityChecker), "Emby", null);
             await OmbiQuartz.Instance.AddJob<IEmbyUserImporter>(nameof(IEmbyUserImporter), "Emby", JobSettingsHelper.UserImporter(s));
         }
+
+        private static async Task AddJellyfin(JobSettings s)
+        {
+            await OmbiQuartz.Instance.AddJob<IJellyfinContentSync>(nameof(IJellyfinContentSync), "Jellyfin", JobSettingsHelper.JellyfinContent(s));
+            await OmbiQuartz.Instance.AddJob<IJellyfinEpisodeSync>(nameof(IJellyfinEpisodeSync), "Jellyfin", null);
+            await OmbiQuartz.Instance.AddJob<IJellyfinAvaliabilityChecker>(nameof(IJellyfinAvaliabilityChecker), "Jellyfin", null);
+            await OmbiQuartz.Instance.AddJob<IJellyfinUserImporter>(nameof(IJellyfinUserImporter), "Jellyfin", JobSettingsHelper.UserImporter(s));
+        }
+
         private static async Task AddNotifications(JobSettings s)
         {
             await OmbiQuartz.Instance.AddJob<INotificationService>(nameof(INotificationService), "Notifications", null);

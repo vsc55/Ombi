@@ -1,7 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Quartz;
 using Quartz.Impl;
+using Quartz.Impl.Matchers;
 using Quartz.Spi;
 
 namespace Ombi.Helpers
@@ -9,8 +13,10 @@ namespace Ombi.Helpers
     public class OmbiQuartz
     {
         protected IScheduler _scheduler { get; set; }
-        
+
         public static IScheduler Scheduler => Instance._scheduler;
+
+        private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         // Singleton
         protected static OmbiQuartz _instance;
@@ -29,11 +35,17 @@ namespace Ombi.Helpers
         {
             _scheduler = await new StdSchedulerFactory().GetScheduler();
         }
-        
+
         public IScheduler UseJobFactory(IJobFactory jobFactory)
         {
             Scheduler.JobFactory = jobFactory;
             return Scheduler;
+        }
+
+        public static async Task<bool> IsJobRunning(string jobName)
+        {
+            var running = await Scheduler.GetCurrentlyExecutingJobs();
+            return running.Any(x => x.JobDetail.Key.Name.Equals(jobName, StringComparison.InvariantCultureIgnoreCase));
         }
 
         public async Task AddJob<T>(string name, string group, string cronExpression, Dictionary<string, string> jobData = null)
@@ -49,7 +61,7 @@ namespace Ombi.Helpers
                 }
             }
 
-            if(!cronExpression.HasValue())
+            if (!cronExpression.HasValue())
             {
                 jobBuilder.StoreDurably(true);
             }
@@ -59,24 +71,38 @@ namespace Ombi.Helpers
             {
                 ITrigger jobTrigger = TriggerBuilder.Create()
                     .WithIdentity(name + "Trigger", group)
-                    .WithCronSchedule(cronExpression, 
+                    .WithCronSchedule(cronExpression,
                         x => x.WithMisfireHandlingInstructionFireAndProceed())
                     .ForJob(name, group)
                     .StartNow()
                     .Build();
                 await Scheduler.ScheduleJob(job, jobTrigger);
-            } 
+            }
             else
             {
                 await Scheduler.AddJob(job, true);
             }
-            
+
         }
 
         public static async Task TriggerJob(string jobName, string group)
         {
-            await Scheduler.TriggerJob(new JobKey(jobName, group));
+            await _semaphore.WaitAsync();
+
+            try
+            {
+                if (!(await IsJobRunning(jobName)))
+                {
+                    await Scheduler.TriggerJob(new JobKey(jobName, group));
+                }
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+
         }
+
 
         public static async Task TriggerJob(string jobName, string group, IDictionary<string, object> data)
         {

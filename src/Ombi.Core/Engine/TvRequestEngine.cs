@@ -7,6 +7,7 @@ using Ombi.Core.Models.Search;
 using Ombi.Helpers;
 using Ombi.Store.Entities;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Security.Principal;
@@ -50,12 +51,28 @@ namespace Ombi.Core.Engine
         public async Task<RequestEngineResult> RequestTvShow(TvRequestViewModel tv)
         {
             var user = await GetUser();
+            var canRequestOnBehalf = false;
+
+            if (tv.RequestOnBehalf.HasValue())
+            {
+                canRequestOnBehalf = await UserManager.IsInRoleAsync(user, OmbiRoles.PowerUser) || await UserManager.IsInRoleAsync(user, OmbiRoles.Admin);
+
+                if (!canRequestOnBehalf)
+                {
+                    return new RequestEngineResult
+                    {
+                        Result = false,
+                        Message = "You do not have the correct permissions to request on behalf of users!",
+                        ErrorMessage = $"You do not have the correct permissions to request on behalf of users!"
+                    };
+                }
+            }
 
             var tvBuilder = new TvShowRequestBuilder(TvApi, MovieDbApi);
             (await tvBuilder
                 .GetShowInfo(tv.TvDbId))
                 .CreateTvList(tv)
-                .CreateChild(tv, user.Id);
+                .CreateChild(tv, canRequestOnBehalf ? tv.RequestOnBehalf : user.Id);
 
             await tvBuilder.BuildEpisodes(tv);
 
@@ -123,12 +140,12 @@ namespace Ombi.Core.Engine
                         ErrorMessage = "This has already been requested"
                     };
                 }
-                return await AddExistingRequest(tvBuilder.ChildRequest, existingRequest);
+                return await AddExistingRequest(tvBuilder.ChildRequest, existingRequest, tv.RequestOnBehalf);
             }
 
             // This is a new request
             var newRequest = tvBuilder.CreateNewRequest(tv);
-            return await AddRequest(newRequest.NewRequest);
+            return await AddRequest(newRequest.NewRequest, tv.RequestOnBehalf);
         }
 
         public async Task<RequestsViewModel<TvRequests>> GetRequests(int count, int position, OrderFilterModel type)
@@ -221,6 +238,187 @@ namespace Ombi.Core.Engine
         }
 
 
+        public async Task<RequestsViewModel<ChildRequests>> GetRequests(int count, int position, string sortProperty, string sortOrder)
+        {
+            var shouldHide = await HideFromOtherUsers();
+            List<ChildRequests> allRequests;
+            if (shouldHide.Hide)
+            {
+                allRequests = await TvRepository.GetChild(shouldHide.UserId).ToListAsync();
+
+                // Filter out children
+
+                FilterChildren(allRequests, shouldHide);
+            }
+            else
+            {
+                allRequests = await TvRepository.GetChild().ToListAsync();
+
+            }
+
+            if (allRequests == null)
+            {
+                return new RequestsViewModel<ChildRequests>();
+            }
+
+            var total = allRequests.Count;
+
+
+            var prop = TypeDescriptor.GetProperties(typeof(ChildRequests)).Find(sortProperty, true);
+
+            if (sortProperty.Contains('.'))
+            {
+                // This is a navigation property currently not supported
+                prop = TypeDescriptor.GetProperties(typeof(ChildRequests)).Find("Title", true);
+                //var properties = sortProperty.Split(new []{'.'}, StringSplitOptions.RemoveEmptyEntries);
+                //var firstProp = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(properties[0], true);
+                //var propType = firstProp.PropertyType;
+                //var secondProp = TypeDescriptor.GetProperties(propType).Find(properties[1], true);
+            }
+            allRequests = sortOrder.Equals("asc", StringComparison.InvariantCultureIgnoreCase)
+                ? allRequests.OrderBy(x => prop.GetValue(x)).ToList()
+                : allRequests.OrderByDescending(x => prop.GetValue(x)).ToList();
+            
+            await CheckForSubscription(shouldHide, allRequests);
+
+            // Make sure we do not show duplicate child requests
+            allRequests = allRequests.DistinctBy(x => x.ParentRequest.Title).ToList();
+
+            allRequests = allRequests.Skip(position).Take(count).ToList();
+
+            return new RequestsViewModel<ChildRequests>
+            {
+                Collection = allRequests,
+                Total = total,
+            };
+        }
+
+         public async Task<RequestsViewModel<ChildRequests>> GetRequests(int count, int position, string sortProperty, string sortOrder, RequestStatus status)
+        {
+            var shouldHide = await HideFromOtherUsers();
+            List<ChildRequests> allRequests;
+            if (shouldHide.Hide)
+            {
+                allRequests = await TvRepository.GetChild(shouldHide.UserId).ToListAsync();
+
+                // Filter out children
+
+                FilterChildren(allRequests, shouldHide);
+            }
+            else
+            {
+                allRequests = await TvRepository.GetChild().ToListAsync();
+
+            }
+
+            switch (status)
+            {
+                case RequestStatus.PendingApproval:
+                    allRequests = allRequests.Where(x => !x.Approved && !x.Available && (!x.Denied.HasValue || !x.Denied.Value)).ToList();
+                    break;
+                case RequestStatus.ProcessingRequest:
+                    allRequests = allRequests.Where(x => x.Approved && !x.Available && (!x.Denied.HasValue || !x.Denied.Value)).ToList();
+                    break;
+                case RequestStatus.Available:
+                    allRequests = allRequests.Where(x => x.Available && (!x.Denied.HasValue || !x.Denied.Value)).ToList();
+                    break;
+                case RequestStatus.Denied:
+                    allRequests = allRequests.Where(x => x.Denied.HasValue  && x.Denied.Value).ToList();
+                    break;
+                default:
+                    break;
+            }
+
+            if (allRequests == null)
+            {
+                return new RequestsViewModel<ChildRequests>();
+            }
+
+            var total = allRequests.Count;
+
+
+            var prop = TypeDescriptor.GetProperties(typeof(ChildRequests)).Find(sortProperty, true);
+
+            if (sortProperty.Contains('.'))
+            {
+                // This is a navigation property currently not supported
+                prop = TypeDescriptor.GetProperties(typeof(ChildRequests)).Find("Title", true);
+                //var properties = sortProperty.Split(new []{'.'}, StringSplitOptions.RemoveEmptyEntries);
+                //var firstProp = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(properties[0], true);
+                //var propType = firstProp.PropertyType;
+                //var secondProp = TypeDescriptor.GetProperties(propType).Find(properties[1], true);
+            }
+            allRequests = sortOrder.Equals("asc", StringComparison.InvariantCultureIgnoreCase)
+                ? allRequests.OrderBy(x => prop.GetValue(x)).ToList()
+                : allRequests.OrderByDescending(x => prop.GetValue(x)).ToList();
+            
+            await CheckForSubscription(shouldHide, allRequests);
+
+            // Make sure we do not show duplicate child requests
+            allRequests = allRequests.DistinctBy(x => x.ParentRequest.Title).ToList();
+
+            allRequests = allRequests.Skip(position).Take(count).ToList();
+
+            return new RequestsViewModel<ChildRequests>
+            {
+                Collection = allRequests,
+                Total = total,
+            };
+        }
+        public async Task<RequestsViewModel<ChildRequests>> GetUnavailableRequests(int count, int position, string sortProperty, string sortOrder)
+        {
+            var shouldHide = await HideFromOtherUsers();
+            List<ChildRequests> allRequests;
+            if (shouldHide.Hide)
+            {
+                allRequests = await TvRepository.GetChild(shouldHide.UserId).Where(x => !x.Available && x.Approved).ToListAsync();
+
+                // Filter out children
+
+                FilterChildren(allRequests, shouldHide);
+            }
+            else
+            {
+                allRequests = await TvRepository.GetChild().Where(x => !x.Available && x.Approved).ToListAsync();
+
+            }
+
+            if (allRequests == null)
+            {
+                return new RequestsViewModel<ChildRequests>();
+            }
+
+            var total = allRequests.Count;
+
+
+            var prop = TypeDescriptor.GetProperties(typeof(ChildRequests)).Find(sortProperty, true);
+
+            if (sortProperty.Contains('.'))
+            {
+                // This is a navigation property currently not supported
+                prop = TypeDescriptor.GetProperties(typeof(ChildRequests)).Find("Title", true);
+                //var properties = sortProperty.Split(new []{'.'}, StringSplitOptions.RemoveEmptyEntries);
+                //var firstProp = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(properties[0], true);
+                //var propType = firstProp.PropertyType;
+                //var secondProp = TypeDescriptor.GetProperties(propType).Find(properties[1], true);
+            }
+            allRequests = sortOrder.Equals("asc", StringComparison.InvariantCultureIgnoreCase)
+                ? allRequests.OrderBy(x => prop.GetValue(x)).ToList()
+                : allRequests.OrderByDescending(x => prop.GetValue(x)).ToList();
+            await CheckForSubscription(shouldHide, allRequests);
+
+            // Make sure we do not show duplicate child requests
+            allRequests = allRequests.DistinctBy(x => x.ParentRequest.Title).ToList();
+            allRequests = allRequests.Skip(position).Take(count).ToList();
+
+            return new RequestsViewModel<ChildRequests>
+            {
+                Collection = allRequests,
+                Total = total,
+            };
+        }
+
+
         public async Task<IEnumerable<TvRequests>> GetRequestsLite()
         {
             var shouldHide = await HideFromOtherUsers();
@@ -278,17 +476,22 @@ namespace Ombi.Core.Engine
         private static void FilterChildren(TvRequests t, HideResult shouldHide)
         {
             // Filter out children
+            FilterChildren(t.ChildRequests, shouldHide);
+        }
 
-            for (var j = 0; j < t.ChildRequests.Count; j++)
+        private static void FilterChildren(List<ChildRequests> t, HideResult shouldHide)
+        {
+            // Filter out children
+
+            for (var j = 0; j < t.Count; j++)
             {
-                var child = t.ChildRequests[j];
+                var child = t[j];
                 if (child.RequestedUserId != shouldHide.UserId)
                 {
-                    t.ChildRequests.RemoveAt(j);
+                    t.RemoveAt(j);
                     j--;
                 }
             }
-
         }
 
         public async Task<IEnumerable<ChildRequests>> GetAllChldren(int tvId)
@@ -549,21 +752,21 @@ namespace Ombi.Core.Engine
             }
         }
 
-        private async Task<RequestEngineResult> AddExistingRequest(ChildRequests newRequest, TvRequests existingRequest)
+        private async Task<RequestEngineResult> AddExistingRequest(ChildRequests newRequest, TvRequests existingRequest, string requestOnBehalf)
         {
             // Add the child
             existingRequest.ChildRequests.Add(newRequest);
 
             await TvRepository.Update(existingRequest);
 
-            return await AfterRequest(newRequest);
+            return await AfterRequest(newRequest, requestOnBehalf);
         }
 
-        private async Task<RequestEngineResult> AddRequest(TvRequests model)
+        private async Task<RequestEngineResult> AddRequest(TvRequests model, string requestOnBehalf)
         {
             await TvRepository.Add(model);
             // This is a new request so we should only have 1 child
-            return await AfterRequest(model.ChildRequests.FirstOrDefault());
+            return await AfterRequest(model.ChildRequests.FirstOrDefault(), requestOnBehalf);
         }
 
         private static List<ChildRequests> SortEpisodes(List<ChildRequests> items)
@@ -579,7 +782,7 @@ namespace Ombi.Core.Engine
         }
 
 
-        private async Task<RequestEngineResult> AfterRequest(ChildRequests model)
+        private async Task<RequestEngineResult> AfterRequest(ChildRequests model, string requestOnBehalf)
         {
             var sendRuleResult = await RunSpecificRule(model, SpecificRules.CanSendNotification);
             if (sendRuleResult.Success)
@@ -589,7 +792,7 @@ namespace Ombi.Core.Engine
 
             await _requestLog.Add(new RequestLog
             {
-                UserId = (await GetUser()).Id,
+                UserId = requestOnBehalf.HasValue() ? requestOnBehalf : (await GetUser()).Id,
                 RequestDate = DateTime.UtcNow,
                 RequestId = model.Id,
                 RequestType = RequestType.TvShow,
@@ -663,6 +866,29 @@ namespace Ombi.Core.Engine
                 Limit = limit,
                 Remaining = count,
                 NextRequest = DateTime.SpecifyKind(oldestRequestedAt.AddDays(7), DateTimeKind.Utc),
+            };
+        }
+
+        public async Task<RequestEngineResult> UpdateAdvancedOptions(MediaAdvancedOptions options)
+        {
+            var request = await TvRepository.Find(options.RequestId);
+            if (request == null)
+            {
+                return new RequestEngineResult
+                {
+                    Result = false,
+                    ErrorMessage = "Request does not exist"
+                };
+            }
+
+            request.QualityOverride = options.QualityOverride;
+            request.RootFolder = options.RootPathOverride;
+
+            await TvRepository.Update(request);
+
+            return new RequestEngineResult
+            {
+                Result = true
             };
         }
     }

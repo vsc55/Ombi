@@ -4,6 +4,7 @@ using Ombi.Helpers;
 using Ombi.Store.Entities;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Security.Principal;
@@ -66,6 +67,22 @@ namespace Ombi.Core.Engine
                 $"{movieInfo.Title}{(!string.IsNullOrEmpty(movieInfo.ReleaseDate) ? $" ({DateTime.Parse(movieInfo.ReleaseDate).Year})" : string.Empty)}";
 
             var userDetails = await GetUser();
+            var canRequestOnBehalf = false;
+
+            if (model.RequestOnBehalf.HasValue())
+            {
+                canRequestOnBehalf = await UserManager.IsInRoleAsync(userDetails, OmbiRoles.PowerUser) || await UserManager.IsInRoleAsync(userDetails, OmbiRoles.Admin);
+
+                if (!canRequestOnBehalf)
+                {
+                    return new RequestEngineResult
+                    {
+                        Result = false,
+                        Message = "You do not have the correct permissions to request on behalf of users!",
+                        ErrorMessage = $"You do not have the correct permissions to request on behalf of users!"
+                    };
+                }
+            }
 
             var requestModel = new MovieRequests
             {
@@ -81,7 +98,7 @@ namespace Ombi.Core.Engine
                 Status = movieInfo.Status,
                 RequestedDate = DateTime.UtcNow,
                 Approved = false,
-                RequestedUserId = userDetails.Id,
+                RequestedUserId = canRequestOnBehalf ? model.RequestOnBehalf : userDetails.Id,
                 Background = movieInfo.BackdropPath,
                 LangCode = model.LanguageCode,
                 RequestedByAlias = model.RequestedByAlias
@@ -102,7 +119,7 @@ namespace Ombi.Core.Engine
 
             if (requestModel.Approved) // The rules have auto approved this
             {
-                var requestEngineResult = await AddMovieRequest(requestModel, fullMovieName);
+                var requestEngineResult = await AddMovieRequest(requestModel, fullMovieName, model.RequestOnBehalf);
                 if (requestEngineResult.Result)
                 {
                     var result = await ApproveMovie(requestModel);
@@ -123,7 +140,7 @@ namespace Ombi.Core.Engine
                 // If there are no providers then it's successful but movie has not been sent
             }
 
-            return await AddMovieRequest(requestModel, fullMovieName);
+            return await AddMovieRequest(requestModel, fullMovieName, model.RequestOnBehalf);
         }
 
 
@@ -196,6 +213,179 @@ namespace Ombi.Core.Engine
             };
         }
 
+        public async Task<RequestsViewModel<MovieRequests>> GetRequests(int count, int position, string sortProperty, string sortOrder)
+        {
+            var shouldHide = await HideFromOtherUsers();
+            IQueryable<MovieRequests> allRequests;
+            if (shouldHide.Hide)
+            {
+                allRequests =
+                    MovieRepository.GetWithUser(shouldHide
+                        .UserId);
+            }
+            else
+            {
+                allRequests =
+                    MovieRepository
+                        .GetWithUser();
+            }
+
+            var prop = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(sortProperty, true);
+
+            if (sortProperty.Contains('.'))
+            {
+                // This is a navigation property currently not supported
+                prop = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find("RequestedDate", true);
+                //var properties = sortProperty.Split(new []{'.'}, StringSplitOptions.RemoveEmptyEntries);
+                //var firstProp = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(properties[0], true);
+                //var propType = firstProp.PropertyType;
+                //var secondProp = TypeDescriptor.GetProperties(propType).Find(properties[1], true);
+            }
+
+            // TODO fix this so we execute this on the server
+            var requests = sortOrder.Equals("asc", StringComparison.InvariantCultureIgnoreCase)
+                ? allRequests.ToList().OrderBy(x => prop.GetValue(x)).ToList()
+                : allRequests.ToList().OrderByDescending(x => prop.GetValue(x)).ToList();
+            var total = requests.Count();
+            requests = requests.Skip(position).Take(count).ToList();
+
+            await CheckForSubscription(shouldHide, requests);
+            return new RequestsViewModel<MovieRequests>
+            {
+                Collection = requests,
+                Total = total
+            };
+        }
+
+        public async Task<RequestsViewModel<MovieRequests>> GetRequestsByStatus(int count, int position, string sortProperty, string sortOrder, RequestStatus status)
+        {
+            var shouldHide = await HideFromOtherUsers();
+            IQueryable<MovieRequests> allRequests;
+            if (shouldHide.Hide)
+            {
+                allRequests =
+                    MovieRepository.GetWithUser(shouldHide
+                        .UserId);
+            }
+            else
+            {
+                allRequests =
+                    MovieRepository
+                        .GetWithUser();
+            }
+
+            switch (status)
+            {
+                case RequestStatus.PendingApproval:
+                    allRequests = allRequests.Where(x => !x.Approved && !x.Available && (!x.Denied.HasValue || !x.Denied.Value));
+                    break;
+                case RequestStatus.ProcessingRequest:
+                    allRequests = allRequests.Where(x => x.Approved && !x.Available && (!x.Denied.HasValue || !x.Denied.Value));
+                    break;
+                case RequestStatus.Available:
+                    allRequests = allRequests.Where(x => x.Available);
+                    break;
+                case RequestStatus.Denied:
+                    allRequests = allRequests.Where(x => x.Denied.HasValue && x.Denied.Value && !x.Available);
+                    break;
+                default:
+                    break;
+            }
+
+            var prop = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(sortProperty, true);
+
+            if (sortProperty.Contains('.'))
+            {
+                // This is a navigation property currently not supported
+                prop = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find("RequestedDate", true);
+                //var properties = sortProperty.Split(new []{'.'}, StringSplitOptions.RemoveEmptyEntries);
+                //var firstProp = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(properties[0], true);
+                //var propType = firstProp.PropertyType;
+                //var secondProp = TypeDescriptor.GetProperties(propType).Find(properties[1], true);
+            }
+
+            // TODO fix this so we execute this on the server
+            var requests = sortOrder.Equals("asc", StringComparison.InvariantCultureIgnoreCase)
+                ? allRequests.ToList().OrderBy(x => x.RequestedDate).ToList()
+                : allRequests.ToList().OrderByDescending(x => prop.GetValue(x)).ToList();
+            var total = requests.Count();
+            requests = requests.Skip(position).Take(count).ToList();
+
+            await CheckForSubscription(shouldHide, requests);
+            return new RequestsViewModel<MovieRequests>
+            {
+                Collection = requests,
+                Total = total
+            };
+        }
+
+        public async Task<RequestsViewModel<MovieRequests>> GetUnavailableRequests(int count, int position, string sortProperty, string sortOrder)
+        {
+            var shouldHide = await HideFromOtherUsers();
+            IQueryable<MovieRequests> allRequests;
+            if (shouldHide.Hide)
+            {
+                allRequests =
+                    MovieRepository.GetWithUser(shouldHide
+                        .UserId).Where(x => !x.Available && x.Approved);
+            }
+            else
+            {
+                allRequests =
+                    MovieRepository
+                        .GetWithUser().Where(x => !x.Available && x.Approved);
+            }
+
+            var prop = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(sortProperty, true);
+
+            if (sortProperty.Contains('.'))
+            {
+                // This is a navigation property currently not supported
+                prop = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find("RequestedDate", true);
+                //var properties = sortProperty.Split(new []{'.'}, StringSplitOptions.RemoveEmptyEntries);
+                //var firstProp = TypeDescriptor.GetProperties(typeof(MovieRequests)).Find(properties[0], true);
+                //var propType = firstProp.PropertyType;
+                //var secondProp = TypeDescriptor.GetProperties(propType).Find(properties[1], true);
+            }
+
+            var requests = (sortOrder.Equals("asc", StringComparison.InvariantCultureIgnoreCase)
+                ? allRequests.ToList().OrderBy(x => prop.GetValue(x))
+                : allRequests.ToList().OrderByDescending(x => prop.GetValue(x))).ToList();
+            var total = requests.Count();
+            requests = requests.Skip(position).Take(count).ToList();
+
+            await CheckForSubscription(shouldHide, requests);
+            return new RequestsViewModel<MovieRequests>
+            {
+                Collection = requests,
+                Total = total
+            };
+        }
+
+
+        public async Task<RequestEngineResult> UpdateAdvancedOptions(MediaAdvancedOptions options)
+        {
+            var request = await MovieRepository.Find(options.RequestId);
+            if (request == null)
+            {
+                return new RequestEngineResult
+                {
+                    Result = false,
+                    ErrorMessage = "Request does not exist"
+                };
+            }
+
+            request.QualityOverride = options.QualityOverride;
+            request.RootPathOverride = options.RootPathOverride;
+
+            await MovieRepository.Update(request);
+
+            return new RequestEngineResult
+            {
+                Result = true
+            };
+        }
+
         private IQueryable<MovieRequests> OrderMovies(IQueryable<MovieRequests> allRequests, OrderType type)
         {
             switch (type)
@@ -250,6 +440,14 @@ namespace Ombi.Core.Engine
             await CheckForSubscription(shouldHide, allRequests);
 
             return allRequests;
+        }
+
+        public async Task<MovieRequests> GetRequest(int requestId)
+        {
+            var request = await MovieRepository.GetWithUser().Where(x => x.Id == requestId).FirstOrDefaultAsync();
+            await CheckForSubscription(new HideResult(), new List<MovieRequests> { request });
+
+            return request;
         }
 
         private async Task CheckForSubscription(HideResult shouldHide, List<MovieRequests> movieRequests)
@@ -472,19 +670,19 @@ namespace Ombi.Core.Engine
             };
         }
 
-        private async Task<RequestEngineResult> AddMovieRequest(MovieRequests model, string movieName)
+        private async Task<RequestEngineResult> AddMovieRequest(MovieRequests model, string movieName, string requestOnBehalf)
         {
             await MovieRepository.Add(model);
 
             var result = await RunSpecificRule(model, SpecificRules.CanSendNotification);
             if (result.Success)
-            { 
+            {
                 await NotificationHelper.NewRequest(model);
             }
 
             await _requestLog.Add(new RequestLog
             {
-                UserId = (await GetUser()).Id,
+                UserId = requestOnBehalf.HasValue() ? requestOnBehalf : (await GetUser()).Id,
                 RequestDate = DateTime.UtcNow,
                 RequestId = model.Id,
                 RequestType = RequestType.Movie,

@@ -3,7 +3,6 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Ombi.Store.Context;
 using Ombi.Store.Context.MySql;
 
 namespace Ombi.Store.Migrations.OmbiMySql
@@ -15,28 +14,31 @@ namespace Ombi.Store.Migrations.OmbiMySql
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.2.6-servicing-10079")
-                .HasAnnotation("Relational:MaxIdentifierLength", 64);
+                .HasAnnotation("Relational:MaxIdentifierLength", 64)
+                .HasAnnotation("ProductVersion", "5.0.1");
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd();
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken();
+                        .IsConcurrencyToken()
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
 
                     b.Property<string>("NormalizedName")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasName("RoleNameIndex");
+                        .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles");
                 });
@@ -44,14 +46,18 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("ClaimType");
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("ClaimValue");
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("RoleId")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -63,14 +69,18 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("ClaimType");
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("ClaimValue");
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserId")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -81,14 +91,18 @@ namespace Ombi.Store.Migrations.OmbiMySql
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.Property<string>("LoginProvider");
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("ProviderKey");
+                    b.Property<string>("ProviderKey")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("ProviderDisplayName");
+                    b.Property<string>("ProviderDisplayName")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserId")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -99,9 +113,11 @@ namespace Ombi.Store.Migrations.OmbiMySql
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("RoleId");
+                    b.Property<string>("RoleId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -112,13 +128,17 @@ namespace Ombi.Store.Migrations.OmbiMySql
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("LoginProvider");
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Name");
+                    b.Property<string>("Name")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Value");
+                    b.Property<string>("Value")
+                        .HasColumnType("longtext");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
@@ -128,37 +148,71 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Audit", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("AuditArea");
+                    b.Property<int>("AuditArea")
+                        .HasColumnType("int");
 
-                    b.Property<int>("AuditType");
+                    b.Property<int>("AuditType")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("DateTime");
+                    b.Property<DateTime>("DateTime")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Description");
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("User");
+                    b.Property<string>("User")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
                     b.ToTable("Audit");
                 });
 
+            modelBuilder.Entity("Ombi.Store.Entities.MobileDevices", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Token")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("MobileDevices");
+                });
+
             modelBuilder.Entity("Ombi.Store.Entities.NotificationTemplates", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("Agent");
+                    b.Property<int>("Agent")
+                        .HasColumnType("int");
 
-                    b.Property<bool>("Enabled");
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("Message");
+                    b.Property<string>("Message")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("NotificationType");
+                    b.Property<int>("NotificationType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Subject");
+                    b.Property<string>("Subject")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -168,13 +222,17 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.NotificationUserId", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("AddedAt");
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("PlayerId");
+                    b.Property<string>("PlayerId")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -186,67 +244,93 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.OmbiUser", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd();
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int>("AccessFailedCount");
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Alias");
+                    b.Property<string>("Alias")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken();
+                        .IsConcurrencyToken()
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Email")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
 
-                    b.Property<bool>("EmailConfirmed");
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("EmbyConnectUserId");
+                    b.Property<int?>("EpisodeRequestLimit")
+                        .HasColumnType("int");
 
-                    b.Property<int?>("EpisodeRequestLimit");
+                    b.Property<string>("Language")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime?>("LastLoggedIn");
+                    b.Property<DateTime?>("LastLoggedIn")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<bool>("LockoutEnabled");
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<DateTimeOffset?>("LockoutEnd");
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int?>("MovieRequestLimit");
+                    b.Property<int?>("MovieRequestLimit")
+                        .HasColumnType("int");
 
-                    b.Property<int?>("MusicRequestLimit");
+                    b.Property<int?>("MusicRequestLimit")
+                        .HasColumnType("int");
 
                     b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
 
                     b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
 
-                    b.Property<string>("PasswordHash");
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("PhoneNumber");
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("longtext");
 
-                    b.Property<bool>("PhoneNumberConfirmed");
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("ProviderUserId");
+                    b.Property<string>("ProviderUserId")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("SecurityStamp");
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("longtext");
 
-                    b.Property<bool>("TwoFactorEnabled");
+                    b.Property<string>("StreamingCountry")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("UserAccessToken");
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("UserAccessToken")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserName")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
 
-                    b.Property<int>("UserType");
+                    b.Property<int>("UserType")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
-                        .HasName("EmailIndex");
+                        .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasName("UserNameIndex");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers");
                 });
@@ -254,21 +338,29 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.RecentlyAddedLog", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("AddedAt");
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("AlbumId");
+                    b.Property<string>("AlbumId")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("ContentId");
+                    b.Property<int>("ContentId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("ContentType");
+                    b.Property<int>("ContentType")
+                        .HasColumnType("int");
 
-                    b.Property<int?>("EpisodeNumber");
+                    b.Property<int?>("EpisodeNumber")
+                        .HasColumnType("int");
 
-                    b.Property<int?>("SeasonNumber");
+                    b.Property<int?>("SeasonNumber")
+                        .HasColumnType("int");
 
-                    b.Property<int>("Type");
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -278,19 +370,26 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.RequestQueue", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<DateTime?>("Completed");
+                    b.Property<DateTime?>("Completed")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime>("Dts");
+                    b.Property<DateTime>("Dts")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Error");
+                    b.Property<string>("Error")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("RequestId");
+                    b.Property<int>("RequestId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("RetryCount");
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
 
-                    b.Property<int>("Type");
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -300,13 +399,17 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.RequestSubscription", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("RequestId");
+                    b.Property<int>("RequestId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -318,45 +421,65 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.AlbumRequest", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<bool>("Approved");
+                    b.Property<bool>("Approved")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("ArtistName");
+                    b.Property<string>("ArtistName")
+                        .HasColumnType("longtext");
 
-                    b.Property<bool>("Available");
+                    b.Property<bool>("Available")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("Cover");
+                    b.Property<string>("Cover")
+                        .HasColumnType("longtext");
 
-                    b.Property<bool?>("Denied");
+                    b.Property<bool?>("Denied")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("DeniedReason");
+                    b.Property<string>("DeniedReason")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("Disk");
+                    b.Property<string>("Disk")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("ForeignAlbumId");
+                    b.Property<string>("ForeignAlbumId")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("ForeignArtistId");
+                    b.Property<string>("ForeignArtistId")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("MarkedAsApproved");
+                    b.Property<DateTime>("MarkedAsApproved")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime?>("MarkedAsAvailable");
+                    b.Property<DateTime?>("MarkedAsAvailable")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime>("MarkedAsDenied");
+                    b.Property<DateTime>("MarkedAsDenied")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<decimal>("Rating");
+                    b.Property<decimal>("Rating")
+                        .HasColumnType("decimal(65,30)");
 
-                    b.Property<DateTime>("ReleaseDate");
+                    b.Property<DateTime>("ReleaseDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("RequestedByAlias");
+                    b.Property<string>("RequestedByAlias")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("RequestedDate");
+                    b.Property<DateTime>("RequestedDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("RequestedUserId");
+                    b.Property<string>("RequestedUserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Title");
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -368,37 +491,53 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.ChildRequests", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<bool>("Approved");
+                    b.Property<bool>("Approved")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("Available");
+                    b.Property<bool>("Available")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<bool?>("Denied");
+                    b.Property<bool?>("Denied")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("DeniedReason");
+                    b.Property<string>("DeniedReason")
+                        .HasColumnType("longtext");
 
-                    b.Property<int?>("IssueId");
+                    b.Property<int?>("IssueId")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("MarkedAsApproved");
+                    b.Property<DateTime>("MarkedAsApproved")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime?>("MarkedAsAvailable");
+                    b.Property<DateTime?>("MarkedAsAvailable")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime>("MarkedAsDenied");
+                    b.Property<DateTime>("MarkedAsDenied")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int>("ParentRequestId");
+                    b.Property<int>("ParentRequestId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("RequestedByAlias");
+                    b.Property<string>("RequestedByAlias")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("RequestedDate");
+                    b.Property<DateTime>("RequestedDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("RequestedUserId");
+                    b.Property<string>("RequestedUserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int>("SeriesType");
+                    b.Property<int>("SeriesType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Title");
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -412,9 +551,11 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.IssueCategory", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("Value");
+                    b.Property<string>("Value")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -424,15 +565,20 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.IssueComments", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("Comment");
+                    b.Property<string>("Comment")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("Date");
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int?>("IssuesId");
+                    b.Property<int?>("IssuesId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -446,29 +592,44 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.Issues", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("Description");
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int>("IssueCategoryId");
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
 
-                    b.Property<int?>("IssueId");
+                    b.Property<int>("IssueCategoryId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ProviderId");
+                    b.Property<int?>("IssueId")
+                        .HasColumnType("int");
 
-                    b.Property<int?>("RequestId");
+                    b.Property<string>("ProviderId")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int?>("RequestId")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime?>("ResovledDate");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<int>("Status");
+                    b.Property<DateTime?>("ResovledDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Subject");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Title");
+                    b.Property<string>("Subject")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("UserReportedId");
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("UserReportedId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -484,55 +645,80 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.MovieRequests", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<bool>("Approved");
+                    b.Property<bool>("Approved")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("Available");
+                    b.Property<bool>("Available")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("Background");
+                    b.Property<string>("Background")
+                        .HasColumnType("longtext");
 
-                    b.Property<bool?>("Denied");
+                    b.Property<bool?>("Denied")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("DeniedReason");
+                    b.Property<string>("DeniedReason")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime?>("DigitalReleaseDate");
+                    b.Property<DateTime?>("DigitalReleaseDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("ImdbId");
+                    b.Property<string>("ImdbId")
+                        .HasColumnType("longtext");
 
-                    b.Property<int?>("IssueId");
+                    b.Property<int?>("IssueId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("LangCode");
+                    b.Property<string>("LangCode")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("MarkedAsApproved");
+                    b.Property<DateTime>("MarkedAsApproved")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime?>("MarkedAsAvailable");
+                    b.Property<DateTime?>("MarkedAsAvailable")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime>("MarkedAsDenied");
+                    b.Property<DateTime>("MarkedAsDenied")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Overview");
+                    b.Property<string>("Overview")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("PosterPath");
+                    b.Property<string>("PosterPath")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("QualityOverride");
+                    b.Property<int>("QualityOverride")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("ReleaseDate");
+                    b.Property<DateTime>("ReleaseDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("RequestedByAlias");
+                    b.Property<string>("RequestedByAlias")
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("RequestedDate");
+                    b.Property<DateTime>("RequestedDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<string>("RequestedUserId");
+                    b.Property<string>("RequestedUserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int>("RootPathOverride");
+                    b.Property<int>("RootPathOverride")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Status");
+                    b.Property<string>("Status")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("TheMovieDbId");
+                    b.Property<int>("TheMovieDbId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Title");
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -544,17 +730,23 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.RequestLog", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("EpisodeCount");
+                    b.Property<int>("EpisodeCount")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("RequestDate");
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int>("RequestId");
+                    b.Property<int>("RequestId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -566,29 +758,41 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Requests.TvRequests", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("Background");
+                    b.Property<string>("Background")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("ImdbId");
+                    b.Property<string>("ImdbId")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("Overview");
+                    b.Property<string>("Overview")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("PosterPath");
+                    b.Property<string>("PosterPath")
+                        .HasColumnType("longtext");
 
-                    b.Property<int?>("QualityOverride");
+                    b.Property<int?>("QualityOverride")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("ReleaseDate");
+                    b.Property<DateTime>("ReleaseDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<int?>("RootFolder");
+                    b.Property<int?>("RootFolder")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Status");
+                    b.Property<string>("Status")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("Title");
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("TotalSeasons");
+                    b.Property<int>("TotalSeasons")
+                        .HasColumnType("int");
 
-                    b.Property<int>("TvDbId");
+                    b.Property<int>("TvDbId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -598,11 +802,14 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Tokens", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("Token");
+                    b.Property<string>("Token")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -614,15 +821,20 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.UserNotificationPreferences", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("Agent");
+                    b.Property<int>("Agent")
+                        .HasColumnType("int");
 
-                    b.Property<bool>("Enabled");
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Value");
+                    b.Property<string>("Value")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -634,21 +846,29 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.UserQualityProfiles", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("RadarrQualityProfile");
+                    b.Property<int>("RadarrQualityProfile")
+                        .HasColumnType("int");
 
-                    b.Property<int>("RadarrRootPath");
+                    b.Property<int>("RadarrRootPath")
+                        .HasColumnType("int");
 
-                    b.Property<int>("SonarrQualityProfile");
+                    b.Property<int>("SonarrQualityProfile")
+                        .HasColumnType("int");
 
-                    b.Property<int>("SonarrQualityProfileAnime");
+                    b.Property<int>("SonarrQualityProfileAnime")
+                        .HasColumnType("int");
 
-                    b.Property<int>("SonarrRootPath");
+                    b.Property<int>("SonarrRootPath")
+                        .HasColumnType("int");
 
-                    b.Property<int>("SonarrRootPathAnime");
+                    b.Property<int>("SonarrRootPathAnime")
+                        .HasColumnType("int");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
                     b.HasKey("Id");
 
@@ -660,19 +880,26 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Entities.Votes", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("Date");
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<bool>("Deleted");
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("RequestId");
+                    b.Property<int>("RequestId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("RequestType");
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
 
-                    b.Property<string>("UserId");
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<int>("VoteType");
+                    b.Property<int>("VoteType")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -684,23 +911,32 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Repository.Requests.EpisodeRequests", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("AirDate");
+                    b.Property<DateTime>("AirDate")
+                        .HasColumnType("datetime(6)");
 
-                    b.Property<bool>("Approved");
+                    b.Property<bool>("Approved")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("Available");
+                    b.Property<bool>("Available")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("EpisodeNumber");
+                    b.Property<int>("EpisodeNumber")
+                        .HasColumnType("int");
 
-                    b.Property<bool>("Requested");
+                    b.Property<bool>("Requested")
+                        .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("SeasonId");
+                    b.Property<int>("SeasonId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Title");
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("Url");
+                    b.Property<string>("Url")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -712,11 +948,14 @@ namespace Ombi.Store.Migrations.OmbiMySql
             modelBuilder.Entity("Ombi.Store.Repository.Requests.SeasonRequests", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<int>("ChildRequestId");
+                    b.Property<int>("ChildRequestId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("SeasonNumber");
+                    b.Property<int>("SeasonNumber")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -727,47 +966,62 @@ namespace Ombi.Store.Migrations.OmbiMySql
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole")
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("Ombi.Store.Entities.OmbiUser")
+                    b.HasOne("Ombi.Store.Entities.OmbiUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("Ombi.Store.Entities.OmbiUser")
+                    b.HasOne("Ombi.Store.Entities.OmbiUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole")
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("Ombi.Store.Entities.OmbiUser")
+                    b.HasOne("Ombi.Store.Entities.OmbiUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("Ombi.Store.Entities.OmbiUser")
+                    b.HasOne("Ombi.Store.Entities.OmbiUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ombi.Store.Entities.MobileDevices", b =>
+                {
+                    b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.NotificationUserId", b =>
@@ -775,6 +1029,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany("NotificationUserIds")
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.RequestSubscription", b =>
@@ -782,6 +1038,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Requests.AlbumRequest", b =>
@@ -789,6 +1047,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "RequestedUser")
                         .WithMany()
                         .HasForeignKey("RequestedUserId");
+
+                    b.Navigation("RequestedUser");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Requests.ChildRequests", b =>
@@ -796,11 +1056,16 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.Requests.TvRequests", "ParentRequest")
                         .WithMany("ChildRequests")
                         .HasForeignKey("ParentRequestId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "RequestedUser")
                         .WithMany()
                         .HasForeignKey("RequestedUserId");
+
+                    b.Navigation("ParentRequest");
+
+                    b.Navigation("RequestedUser");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Requests.IssueComments", b =>
@@ -812,6 +1077,10 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("Issues");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Requests.Issues", b =>
@@ -819,19 +1088,24 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.Requests.IssueCategory", "IssueCategory")
                         .WithMany()
                         .HasForeignKey("IssueCategoryId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("Ombi.Store.Entities.Requests.ChildRequests")
+                    b.HasOne("Ombi.Store.Entities.Requests.ChildRequests", null)
                         .WithMany("Issues")
                         .HasForeignKey("IssueId");
 
-                    b.HasOne("Ombi.Store.Entities.Requests.MovieRequests")
+                    b.HasOne("Ombi.Store.Entities.Requests.MovieRequests", null)
                         .WithMany("Issues")
                         .HasForeignKey("IssueId");
 
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "UserReported")
                         .WithMany()
                         .HasForeignKey("UserReportedId");
+
+                    b.Navigation("IssueCategory");
+
+                    b.Navigation("UserReported");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Requests.MovieRequests", b =>
@@ -839,6 +1113,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "RequestedUser")
                         .WithMany()
                         .HasForeignKey("RequestedUserId");
+
+                    b.Navigation("RequestedUser");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Requests.RequestLog", b =>
@@ -846,6 +1122,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Tokens", b =>
@@ -853,6 +1131,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.UserNotificationPreferences", b =>
@@ -860,6 +1140,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany("UserNotificationPreferences")
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.UserQualityProfiles", b =>
@@ -867,6 +1149,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Entities.Votes", b =>
@@ -874,6 +1158,8 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.OmbiUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ombi.Store.Repository.Requests.EpisodeRequests", b =>
@@ -881,7 +1167,10 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Repository.Requests.SeasonRequests", "Season")
                         .WithMany("Episodes")
                         .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Season");
                 });
 
             modelBuilder.Entity("Ombi.Store.Repository.Requests.SeasonRequests", b =>
@@ -889,7 +1178,44 @@ namespace Ombi.Store.Migrations.OmbiMySql
                     b.HasOne("Ombi.Store.Entities.Requests.ChildRequests", "ChildRequest")
                         .WithMany("SeasonRequests")
                         .HasForeignKey("ChildRequestId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChildRequest");
+                });
+
+            modelBuilder.Entity("Ombi.Store.Entities.OmbiUser", b =>
+                {
+                    b.Navigation("NotificationUserIds");
+
+                    b.Navigation("UserNotificationPreferences");
+                });
+
+            modelBuilder.Entity("Ombi.Store.Entities.Requests.ChildRequests", b =>
+                {
+                    b.Navigation("Issues");
+
+                    b.Navigation("SeasonRequests");
+                });
+
+            modelBuilder.Entity("Ombi.Store.Entities.Requests.Issues", b =>
+                {
+                    b.Navigation("Comments");
+                });
+
+            modelBuilder.Entity("Ombi.Store.Entities.Requests.MovieRequests", b =>
+                {
+                    b.Navigation("Issues");
+                });
+
+            modelBuilder.Entity("Ombi.Store.Entities.Requests.TvRequests", b =>
+                {
+                    b.Navigation("ChildRequests");
+                });
+
+            modelBuilder.Entity("Ombi.Store.Repository.Requests.SeasonRequests", b =>
+                {
+                    b.Navigation("Episodes");
                 });
 #pragma warning restore 612, 618
         }

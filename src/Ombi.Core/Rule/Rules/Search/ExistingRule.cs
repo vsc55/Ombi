@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Ombi.Core.Models.Search;
+using Ombi.Core.Models.Search.V2.Music;
 using Ombi.Core.Rule.Interfaces;
 using Ombi.Store.Entities;
 using Ombi.Store.Repository;
@@ -30,7 +31,6 @@ namespace Ombi.Core.Rule.Rules.Search
                 var movieRequests = await Movie.GetRequestAsync(obj.Id);
                 if (movieRequests != null) // Do we already have a request for this?
                 {
-
                     obj.Requested = true;
                     obj.RequestId = movieRequests.Id;
                     obj.Approved = movieRequests.Approved;
@@ -44,22 +44,11 @@ namespace Ombi.Core.Rule.Rules.Search
             }
             if (obj.Type == RequestType.TvShow)
             {
-                //var tvRequests = Tv.GetRequest(obj.Id);
-                //if (tvRequests != null) // Do we already have a request for this?
-                //{
-
-                //    obj.Requested = true;
-                //    obj.Approved = tvRequests.ChildRequests.Any(x => x.Approved);
-                //    obj.Available = tvRequests.ChildRequests.Any(x => x.Available);
-
-                //    return Task.FromResult(Success());
-                //}
-
                 var request = (SearchTvShowViewModel)obj;
                 var tvRequests = Tv.GetRequest(obj.Id);
                 if (tvRequests != null) // Do we already have a request for this?
                 {
-
+                    request.RequestId = tvRequests.Id;
                     request.Requested = true;
                     request.Approved = tvRequests.ChildRequests.Any(x => x.Approved);
                     request.Denied = tvRequests.ChildRequests.Any(x => x.Denied ?? false);
@@ -104,19 +93,35 @@ namespace Ombi.Core.Rule.Rules.Search
             }
             if (obj.Type == RequestType.Album)
             {
-                var album = (SearchAlbumViewModel) obj;
-                var albumRequest = await Music.GetRequestAsync(album.ForeignAlbumId);
-                if (albumRequest != null) // Do we already have a request for this?
+                if (obj is SearchAlbumViewModel album)
                 {
-                    obj.Requested = true;
-                    obj.RequestId = albumRequest.Id;
-                    obj.Approved = albumRequest.Approved;
-                    obj.Denied = albumRequest.Denied;
-                    obj.DeniedReason = albumRequest.DeniedReason;
-                    obj.Available = albumRequest.Available;
+                    var albumRequest = await Music.GetRequestAsync(album.ForeignAlbumId);
+                    if (albumRequest != null) // Do we already have a request for this?
+                    {
+                        obj.Requested = true;
+                        obj.RequestId = albumRequest.Id; 
+                        obj.Denied = albumRequest.Denied;
+                        obj.DeniedReason = albumRequest.DeniedReason;
+                        obj.Approved = albumRequest.Approved;
+                        obj.Available = albumRequest.Available;
 
-                    return Success();
+                        return Success();
+                    }
                 }
+                if (obj is ReleaseGroup release)
+                {
+                    var albumRequest = await Music.GetRequestAsync(release.Id);
+                    if (albumRequest != null) // Do we already have a request for this?
+                    {
+                        obj.Requested = true;
+                        obj.RequestId = albumRequest.Id;
+                        obj.Approved = albumRequest.Approved;
+                        obj.Available = albumRequest.Available;
+
+                        return Success();
+                    }
+                }
+
                 return Success();
             }
             return Success();

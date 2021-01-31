@@ -1,0 +1,102 @@
+﻿<settings-menu></settings-menu>
+<div *ngIf="about" class="small-middle-container">
+  <legend>About</legend>
+<div class="row">
+  <div class="col-md-8">
+  <div class="mat-table">
+      <div class="mat-row" style="background:red;" *ngIf="notSupported">
+          <div class="mat-cell" style="text-align: center;"><b>NOT SUPPORTED OS. Please use the docker image available on the Container Station (It's free)</b></div>
+        </div>
+    <div class="mat-row" *ngIf="connectedUsers">
+      <div class="mat-cell">Users Online</div>
+      <div class="mat-cell">{{connectedUsers.length}}</div>
+    </div>
+    <div class="mat-row">
+      <div class="mat-cell">Version</div>
+      <div class="mat-cell">{{about.version}} <a [routerLink]="['/Settings/Update']" *ngIf="newUpdate"
+          style="color:#df691a"><b>(New Update Available)</b></a></div>
+    </div>
+
+    <!-- <div class="mat-row">
+      <div class="mat-cell">Branch</div>
+      <div class="mat-cell">{{about.branch}}</div>
+    </div> -->
+
+    <div class="mat-row">
+      <div class="mat-cell">Github</div>
+      <div class="mat-cell"> <a href="https://github.com/tidusjar/Ombi"
+          target="_blank">https://github.com/tidusjar/Ombi</a></div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">Discord</div>
+      <div class="mat-cell"><a href="https://discord.gg/Sa7wNWb" target="_blank">https://discord.gg/Sa7wNWb</a></div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">Reddit</div>
+      <div class="mat-cell"> <a href="https://www.reddit.com/r/Ombi/" target="_blank">https://www.reddit.com/r/Ombi/</a>
+      </div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">Issues</div>
+      <div class="mat-cell"> <a href="https://github.com/tidusjar/Ombi/issues"
+          target="_blank">https://github.com/tidusjar/Ombi/issues</a></div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">Wiki</div>
+      <div class="mat-cell"> <a href="https://github.com/tidusjar/Ombi/wiki"
+          target="_blank">https://github.com/tidusjar/Ombi/wiki</a></div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">OS Architecture</div>
+      <div class="mat-cell"> {{about.osArchitecture}}</div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">OS Description</div>
+      <div class="mat-cell">{{about.osDescription}}</div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">Process Architecture</div>
+      <div class="mat-cell">{{about.processArchitecture}}</div>
+    </div>
+
+    <div class="mat-row">
+      <div class="mat-cell">Application Base Path</div>
+      <div class="mat-cell">{{about.applicationBasePath}}</div>
+    </div>    
+    
+    <div class="mat-row">
+      <div class="mat-cell">Storage Path</div>
+      <div class="mat-cell">{{about.storagePath}}</div>
+    </div> 
+    
+    <div class="mat-row">
+      <div class="mat-cell">Ombi Database</div>
+      <div class="mat-cell">{{about.ombiDatabaseType}}</div>
+    </div> 
+    
+    <div class="mat-row">
+      <div class="mat-cell">External Database</div>
+      <div class="mat-cell">{{about.externalDatabaseType}}</div>
+    </div> 
+    
+    <div class="mat-row">
+      <div class="mat-cell">Settings Database</div>
+      <div class="mat-cell">{{about.settingsDatabaseType}}</div>
+    </div>
+
+
+  </div>
+  </div>
+  <div class="col-md-4">
+    <h2>News</h2>
+    <div [innerHTML]="newsHtml"></div>
+  </div>
+  </div>
+</div>

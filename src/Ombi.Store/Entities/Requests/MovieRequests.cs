@@ -8,6 +8,10 @@ namespace Ombi.Store.Entities.Requests
     [Table("MovieRequests")]
     public class MovieRequests : FullBaseRequest
     {
+        public MovieRequests()
+        {
+            RequestType = RequestType.Movie;
+        }
         public int TheMovieDbId { get; set; }
         public int? IssueId { get; set; }
         [ForeignKey(nameof(IssueId))]
@@ -29,5 +33,33 @@ namespace Ombi.Store.Entities.Requests
         [NotMapped]
         [JsonIgnore]
         public string LanguageCode => LangCode.IsNullOrEmpty() ? "en" : LangCode;
+
+        [NotMapped]
+        public string RequestStatus {
+            get
+            {
+                if (Available)
+                {
+                    return "Common.Available";
+                }
+
+                if (Denied ?? false)
+                {
+                    return "Common.Denied";
+                }
+
+                if (Approved & !Available)
+                {
+                    return "Common.ProcessingRequest";
+                }
+
+                if (!Approved && !Available)
+                {
+                    return "Common.PendingApproval";
+                }
+
+                return string.Empty;
+            }
+        }
     }
 }

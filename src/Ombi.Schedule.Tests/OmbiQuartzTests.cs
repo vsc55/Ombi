@@ -13,7 +13,7 @@ namespace Ombi.Schedule.Tests
 
         [Test]
         [Ignore("Cannot get this to work")]
-        public Task Test()
+        public void Test()
         {
             var scheduleMock = new Mock<IScheduler>();
             scheduleMock.Setup(x => x.TriggerJob(It.IsAny<JobKey>(),
@@ -25,7 +25,6 @@ namespace Ombi.Schedule.Tests
             scheduleMock.Verify(x => x.TriggerJob(It.Is<JobKey>(j => j.Name == "ABC"), 
                 default(CancellationToken)), Times.Once);
 
-            return Task.CompletedTask;
         }
     }
     public class QuartzMock : OmbiQuartz
